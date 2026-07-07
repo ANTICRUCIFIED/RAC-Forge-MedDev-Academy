@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { HelpCircle, CheckCircle2, ChevronRight, ChevronLeft, Award, Sparkles, BookOpen, Activity, PlayCircle } from 'lucide-react';
+import { HelpCircle, CheckCircle2, ChevronRight, ChevronLeft, Award, Sparkles, BookOpen, Activity, PlayCircle, AlertCircle } from 'lucide-react';
 import IndianMDRClassifier from './IndianMDRClassifier';
 
 interface ForgeFlowStentStoryProps {
@@ -10,6 +10,15 @@ export default function ForgeFlowStentStory({ onStoryCompleted }: ForgeFlowStent
   const [slideIndex, setSlideIndex] = useState<number>(0);
   const [analysisDone, setAnalysisDone] = useState<boolean>(false);
   const [userAnswers, setUserAnswers] = useState<Record<string, string>>({});
+  const [wrongSelection, setWrongSelection] = useState<{title: string; reason: string} | null>(null);
+
+  const handleAnswer = (question: string, answer: string, isCorrect: boolean, errorTitle: string, errorReason: string) => {
+    if (!isCorrect) {
+      setWrongSelection({ title: errorTitle, reason: errorReason });
+      return;
+    }
+    setUserAnswers(prev => ({ ...prev, [question]: answer }));
+  };
 
   // Story slides definitions
   const slides = [
@@ -88,7 +97,7 @@ export default function ForgeFlowStentStory({ onStoryCompleted }: ForgeFlowStent
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => setUserAnswers(prev => ({ ...prev, site: 'circulatory' }))}
+                  onClick={() => handleAnswer('site', 'circulatory', true, '', '')}
                   className={`p-2 text-left text-xs rounded-xl border transition-all ${
                     userAnswers.site === 'circulatory'
                       ? 'bg-indigo-600 text-white border-indigo-600 font-bold'
@@ -99,7 +108,7 @@ export default function ForgeFlowStentStory({ onStoryCompleted }: ForgeFlowStent
                 </button>
                 <button
                   type="button"
-                  onClick={() => setUserAnswers(prev => ({ ...prev, site: 'other' }))}
+                  onClick={() => handleAnswer('site', 'other', false, 'Incorrect Anatomy', 'The ForgeFlow DES is implanted directly into the coronary arteries of the heart, which are part of the central circulatory system. It is not used in general tissue or bone.')}
                   className={`p-2 text-left text-xs rounded-xl border transition-all ${
                     userAnswers.site === 'other'
                       ? 'bg-indigo-600 text-white border-indigo-600 font-bold'
@@ -117,7 +126,7 @@ export default function ForgeFlowStentStory({ onStoryCompleted }: ForgeFlowStent
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => setUserAnswers(prev => ({ ...prev, duration: 'permanent' }))}
+                  onClick={() => handleAnswer('duration', 'permanent', true, '', '')}
                   className={`p-2 text-left text-xs rounded-xl border transition-all ${
                     userAnswers.duration === 'permanent'
                       ? 'bg-indigo-600 text-white border-indigo-600 font-bold'
@@ -128,7 +137,7 @@ export default function ForgeFlowStentStory({ onStoryCompleted }: ForgeFlowStent
                 </button>
                 <button
                   type="button"
-                  onClick={() => setUserAnswers(prev => ({ ...prev, duration: 'transient' }))}
+                  onClick={() => handleAnswer('duration', 'transient', false, 'Incorrect Duration', 'Stents are permanently implanted into the artery to provide lifelong structural support. They are not transient devices like catheters that are removed immediately.')}
                   className={`p-2 text-left text-xs rounded-xl border transition-all ${
                     userAnswers.duration === 'transient'
                       ? 'bg-indigo-600 text-white border-indigo-600 font-bold'
@@ -146,7 +155,7 @@ export default function ForgeFlowStentStory({ onStoryCompleted }: ForgeFlowStent
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => setUserAnswers(prev => ({ ...prev, drug: 'yes' }))}
+                  onClick={() => handleAnswer('drug', 'yes', true, '', '')}
                   className={`p-2 text-left text-xs rounded-xl border transition-all ${
                     userAnswers.drug === 'yes'
                       ? 'bg-indigo-600 text-white border-indigo-600 font-bold'
@@ -157,7 +166,7 @@ export default function ForgeFlowStentStory({ onStoryCompleted }: ForgeFlowStent
                 </button>
                 <button
                   type="button"
-                  onClick={() => setUserAnswers(prev => ({ ...prev, drug: 'no' }))}
+                  onClick={() => handleAnswer('drug', 'no', false, 'Missing Active Component', 'ForgeFlow is a Drug-Eluting Stent (DES). It explicitly contains Sirolimus as an active pharmaceutical ingredient to prevent scar tissue formation. A simple bare-metal stent would not elute any drug.')}
                   className={`p-2 text-left text-xs rounded-xl border transition-all ${
                     userAnswers.drug === 'no'
                       ? 'bg-indigo-600 text-white border-indigo-600 font-bold'
@@ -353,6 +362,28 @@ export default function ForgeFlowStentStory({ onStoryCompleted }: ForgeFlowStent
           </button>
         )}
       </div>
+
+      {wrongSelection && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-rose-100">
+            <div className="flex justify-center mb-4">
+              <div className="bg-rose-100 text-rose-600 p-3 rounded-full">
+                <AlertCircle size={32} />
+              </div>
+            </div>
+            <h3 className="text-lg font-bold text-slate-800 text-center mb-2">{wrongSelection.title}</h3>
+            <p className="text-sm text-slate-600 text-center mb-6 leading-relaxed">
+              {wrongSelection.reason}
+            </p>
+            <button
+              onClick={() => setWrongSelection(null)}
+              className="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold py-3 px-4 rounded-xl transition-all"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

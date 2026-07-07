@@ -3,15 +3,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { STORY_PHASES } from './data/caseStudyData';
 import { REGULATORY_TEMPLATES } from './data/templatesData';
 import BiocompatibilityEvaluator from './components/BiocompatibilityEvaluator';
 import RiskManagementBoard from './components/RiskManagementBoard';
 import DesignControlsTracer from './components/DesignControlsTracer';
 import DesignTransferAndPMS from './components/DesignTransferAndPMS';
-import IndianMDRClassifier from './components/IndianMDRClassifier';
+import IndianMDRClassifier, { TERM_MAP } from './components/IndianMDRClassifier';
 import ForgeFlowStentStory from './components/ForgeFlowStentStory';
+import { RegulatoryTermsPopup, REGULATORY_TERMS } from './components/RegulatoryTermsPopup';
 import { 
   Activity, 
   Sparkles, 
@@ -30,6 +31,94 @@ import {
 } from 'lucide-react';
 
 export default function App() {
+  // Global Text Selection Term Lookup
+  const [globalHelpTerm, setGlobalHelpTerm] = useState<string | null>(null);
+  const [dynamicTermData, setDynamicTermData] = useState<any | null>(null);
+  const [isLoadingTerm, setIsLoadingTerm] = useState(false);
+
+  useEffect(() => {
+    const handleMouseUp = async () => {
+      const selection = window.getSelection();
+      if (!selection || selection.isCollapsed) return;
+      const text = selection.toString().trim().toLowerCase();
+      if (!text || text.length < 4 || text.split(/\s+/).length > 3) return; // avoid triggering on very short words or long phrases
+
+      let foundTermId: string | null = null;
+
+      // 1. Exact match with TERM_MAP keys
+      for (const [key, termId] of Object.entries(TERM_MAP)) {
+        if (text === key.toLowerCase()) {
+           foundTermId = termId;
+           break;
+        }
+      }
+
+      // 2. Partial match with TERM_MAP keys
+      if (!foundTermId) {
+        for (const [key, termId] of Object.entries(TERM_MAP)) {
+          if (key.toLowerCase().includes(text)) {
+             foundTermId = termId;
+             break;
+          }
+        }
+      }
+
+      // 3. Partial match with REGULATORY_TERMS definitions or names
+      if (!foundTermId) {
+        for (const [key, termObj] of Object.entries(REGULATORY_TERMS)) {
+           if (termObj.name.toLowerCase().includes(text)) {
+             foundTermId = key;
+             break;
+           }
+        }
+      }
+
+      if (foundTermId) {
+        setGlobalHelpTerm(foundTermId);
+        setDynamicTermData(null);
+      } else {
+        // Fetch dynamically from our API
+        try {
+          setIsLoadingTerm(true);
+          const res = await fetch("/api/define", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ term: text })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setDynamicTermData(data);
+            setGlobalHelpTerm(null); // Clear static term
+          } else {
+            setDynamicTermData({
+              id: "error",
+              name: text,
+              category: "Error",
+              definition: "Sorry, we could not generate a definition for this term right now due to high demand. Please try again later.",
+              examples: []
+            });
+            setGlobalHelpTerm(null);
+          }
+        } catch (error) {
+          console.error("Failed to define term:", error);
+          setDynamicTermData({
+            id: "error",
+            name: text,
+            category: "Error",
+            definition: "An error occurred while connecting to the definition service. Please try again later.",
+            examples: []
+          });
+          setGlobalHelpTerm(null);
+        } finally {
+          setIsLoadingTerm(false);
+        }
+      }
+    };
+
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => document.removeEventListener('mouseup', handleMouseUp);
+  }, []);
+
   // Master Tab State: 1 to 7
   // 1: Indian MDR Classifier, 2: Stent Story Study, 3: Biocompatibility, 4: Design Controls, 5: Risk FMEA, 6: Design Transfer & PMS, 7: Templates
   const [activeTab, setActiveTab] = useState<number>(1);
@@ -293,13 +382,13 @@ export default function App() {
             {activeTab === 1 && (
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 text-slate-700 space-y-8" id="phase-concept">
                 <div className="flex justify-between items-start flex-wrap gap-4">
-                  <div className="flex items-center gap-2">
-                    <span className="p-1.5 bg-indigo-50 text-indigo-600 rounded-xl">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <span className="p-1.5 bg-indigo-50 text-indigo-600 rounded-xl shrink-0">
                       <Sparkles size={20} />
                     </span>
-                    <div>
-                      <h2 className="text-xl font-bold text-slate-800">Module 1: Indian MDR 2017 Classifier Tool</h2>
-                      <p className="text-xs text-slate-500">Master CDSCO drug and device risk pathways using the official rules-based classifier.</p>
+                    <div className="min-w-0">
+                      <h2 className="text-xl font-bold text-slate-800 truncate">Module 1: Indian MDR 2017 Classifier Tool</h2>
+                      <p className="text-xs text-slate-500 truncate">Master CDSCO drug and device risk pathways using the official rules-based classifier.</p>
                     </div>
                   </div>
                   <button
@@ -518,9 +607,28 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-slate-200 py-3 text-center text-slate-400 text-[10px] shrink-0">
+      <footer className="bg-white border-t border-slate-200 py-3 text-center text-slate-400 text-[10px] shrink-0 relative">
         © 2026 RAC Forge Private Limited. Developed for internal regulatory training, design control education, and biocompatibility safety audits.
       </footer>
+
+      {/* Loading Indicator for AI Definitions */}
+      {isLoadingTerm && (
+        <div className="fixed bottom-6 right-6 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-3 border border-slate-700 animate-pulse z-50">
+          <Activity size={18} className="text-indigo-400 animate-spin" />
+          <span className="text-sm font-medium">Analyzing term...</span>
+        </div>
+      )}
+
+      {(globalHelpTerm || dynamicTermData) && (
+        <RegulatoryTermsPopup
+          termId={globalHelpTerm || undefined}
+          termData={dynamicTermData}
+          onClose={() => {
+            setGlobalHelpTerm(null);
+            setDynamicTermData(null);
+          }}
+        />
+      )}
     </div>
   );
 }

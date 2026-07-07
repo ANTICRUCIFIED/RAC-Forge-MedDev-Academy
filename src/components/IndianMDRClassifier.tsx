@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   HelpCircle, 
   CheckCircle2, 
@@ -26,7 +26,72 @@ import {
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
-import { RegulatoryTermsPopup } from './RegulatoryTermsPopup';
+import { RegulatoryTermsPopup, REGULATORY_TERMS } from './RegulatoryTermsPopup';
+
+interface TermLinkProps {
+  termId: string;
+  children: React.ReactNode;
+  onSelect: (termId: string) => void;
+}
+
+const TermLink: React.FC<TermLinkProps> = ({ termId, children, onSelect }) => {
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(termId)}
+      className="inline-flex items-center gap-0.5 px-1 py-0.5 bg-indigo-50/80 hover:bg-indigo-100 text-indigo-700 hover:text-indigo-900 border-b-2 border-dashed border-indigo-400 font-semibold rounded cursor-pointer transition-all leading-normal text-[11px] select-none mx-0.5"
+      title={`Learn what "${String(children)}" means`}
+    >
+      {children}
+      <span className="text-[8px] opacity-80">❓</span>
+    </button>
+  );
+};
+
+const PARSE_REGEX = /(natural body orifices|surgically invasive|Invasive devices|active devices|active device|active therapeutic devices|active diagnostic devices|implantable|Implantable|transient use|short-term use|long-term use|Hydrocolloid or alginate dressings|stents|stent|ancillary substance|catheters|catheter|Hemodialysis|central circulatory system|central nervous system|animal or human non-viable tissue\/cell derivatives|animal tissues, cells, or human derivatives|DEHP)/g;
+
+export const TERM_MAP: Record<string, string> = {
+  'natural body orifices': 'orifices',
+  'surgically invasive': 'surgically_invasive',
+  'Invasive devices': 'invasive',
+  'active devices': 'active',
+  'active device': 'active',
+  'active therapeutic devices': 'active',
+  'active diagnostic devices': 'active',
+  'implantable': 'implantable',
+  'Implantable': 'implantable',
+  'transient use': 'transient',
+  'short-term use': 'short_term',
+  'long-term use': 'long_term',
+  'Hydrocolloid or alginate dressings': 'hydrocolloid_alginate',
+  'stents': 'stent',
+  'stent': 'stent',
+  'ancillary substance': 'ancillary_substance',
+  'catheters': 'catheter',
+  'catheter': 'catheter',
+  'Hemodialysis': 'hemodialysis',
+  'central circulatory system': 'central_circulatory',
+  'central nervous system': 'central_nervous',
+  'animal or human non-viable tissue/cell derivatives': 'bioburden',
+  'animal tissues, cells, or human derivatives': 'bioburden',
+  'DEHP': 'dehp'
+};
+
+const ParsedText = ({ text, onSelect }: { text: string; onSelect: (id: string) => void }) => {
+  if (!text) return null;
+  const parts = text.split(PARSE_REGEX);
+  return (
+    <>
+      {parts.map((part, i) => {
+        const termId = TERM_MAP[part];
+        if (termId) {
+          return <TermLink key={i} termId={termId} onSelect={onSelect}>{part}</TermLink>;
+        }
+        return <span key={i}>{part}</span>;
+      })}
+    </>
+  );
+};
 
 // Complete CDSCO MDR 2017 16-Rule statutory dataset
 const CDSCO_RULES_DATA = [
@@ -506,26 +571,61 @@ export default function IndianMDRClassifier({ onClassificationCompleted, isSecon
     }
   };
 
+  const syncTermId = (() => {
+    if (hasDrug) return 'ancillary_substance';
+    if (hasTissue) return 'bioburden';
+    
+    if (deviceCategory === 'non_invasive') {
+      if (niSub === 'r1_general') return 'invasive';
+      if (niSub === 'r2_channeling') return 'dehp';
+      if (niSub === 'r3_filtration') return 'hemodialysis';
+      if (niSub === 'r4_skin_barrier') return 'hydrocolloid_alginate';
+    }
+    
+    if (deviceCategory === 'invasive') {
+      if (invType === 'orifice') return 'orifices';
+      if (invType === 'surgically_long') {
+        if (invContact === 'circulatory') return 'central_circulatory';
+        if (invContact === 'nervous') return 'central_nervous';
+        return 'surgically_invasive';
+      }
+    }
+    
+    if (deviceCategory === 'active') {
+      return 'active';
+    }
+    
+    if (deviceCategory === 'special') {
+      if (hasDrug) return 'ancillary_substance';
+      if (hasTissue) return 'bioburden';
+      if (isContraceptive) return 'implantable';
+    }
+    
+    return null;
+  })();
+
+  const syncTerm = syncTermId ? REGULATORY_TERMS[syncTermId] : null;
+
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden" id="indian-mdr-tool">
       
       {/* Academy & Simulator Toggle Bar */}
-      <div className="bg-slate-900 px-6 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-800 gap-4">
-        <div>
+      <div className="bg-slate-900 px-6 py-4 flex flex-col lg:flex-row justify-between items-start lg:items-center border-b border-slate-800 gap-4">
+        <div className="min-w-0 flex-1">
           <span className="text-[10px] bg-indigo-500/20 text-indigo-400 font-bold tracking-wider uppercase px-2 py-0.5 rounded-full border border-indigo-500/30">
             Indian MDR 2017 Regulatory Protocol
           </span>
-          <h2 className="text-base font-extrabold text-white mt-1">
+          <h2 className="text-base font-extrabold text-white mt-1 leading-tight">
             {isSecondModuleMode ? 'ForgeFlow DES Regulatory Classifier' : 'Module 1: De-constructing the Medical Device & Risk Classification'}
           </h2>
         </div>
 
         {/* Outer Mode Selector */}
         {!isSecondModuleMode && (
-          <div className="bg-slate-950 p-1 rounded-xl flex border border-slate-800/80 w-full sm:w-auto">
+          <div className="bg-slate-950 p-1 rounded-xl flex flex-wrap sm:flex-nowrap border border-slate-800/80 w-full lg:w-auto shrink-0 gap-1">
             <button
               onClick={() => setSubMode('academy')}
-              className={`flex-1 sm:flex-none text-xs font-bold py-1.5 px-4 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+              className={`flex-1 lg:flex-none text-xs font-bold py-1.5 px-3 rounded-lg transition-all flex items-center justify-center gap-1.5 min-w-max ${
                 subMode === 'academy' 
                   ? 'bg-indigo-600 text-white shadow-md' 
                   : 'text-slate-400 hover:text-white'
@@ -535,7 +635,7 @@ export default function IndianMDRClassifier({ onClassificationCompleted, isSecon
             </button>
             <button
               onClick={() => setSubMode('classifier')}
-              className={`flex-1 sm:flex-none text-xs font-bold py-1.5 px-4 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+              className={`flex-1 lg:flex-none text-xs font-bold py-1.5 px-3 rounded-lg transition-all flex items-center justify-center gap-1.5 min-w-max ${
                 subMode === 'classifier' 
                   ? 'bg-indigo-600 text-white shadow-md' 
                   : 'text-slate-400 hover:text-white'
@@ -687,7 +787,7 @@ export default function IndianMDRClassifier({ onClassificationCompleted, isSecon
                       <span className="text-[10px] bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded uppercase">Medical Device Mechanism</span>
                       <strong className="block text-xs font-bold text-slate-800 mt-2">Physical, Structural, or Mechanical Action</strong>
                       <p className="text-[11px] text-slate-600 leading-relaxed mt-1">
-                        Achieves its primary purpose via structural means. For example, a bone screw binds segments mechanically, a catheter channels fluids physically, and a stent holds open an occluded artery structurally. It does not chemically react with tissues to achieve its main effect.
+                        Achieves its primary purpose via structural means. For example, a bone screw binds segments mechanically, a <TermLink termId="catheter" onSelect={setActiveHelpTerm}>catheter</TermLink> channels fluids physically, and a <TermLink termId="stent" onSelect={setActiveHelpTerm}>stent</TermLink> holds open an occluded artery structurally. It does not chemically react with tissues to achieve its main effect.
                       </p>
                     </div>
                     <div className="bg-rose-50/20 p-4 rounded-xl border border-rose-100">
@@ -911,10 +1011,10 @@ export default function IndianMDRClassifier({ onClassificationCompleted, isSecon
 
                     <p className="text-[11.5px] text-slate-600 leading-relaxed space-y-2">
                       <span>
-                        Non-invasive devices are products that remain completely outside the patient's biological boundaries, never penetrating surgically or entering natural orifices. Under CDSCO Rules 1-4, the vast majority of these devices (e.g. beds, stethoscopes) are assigned to Class A, presenting the lowest potential clinical risk.
+                        Non-invasive devices are products that remain completely outside the patient's biological boundaries, never penetrating surgically or entering <TermLink termId="orifices" onSelect={setActiveHelpTerm}>natural orifices</TermLink>. Under CDSCO Rules 1-4, the vast majority of these devices (e.g. beds, stethoscopes) are assigned to Class A, presenting the lowest potential clinical risk.
                       </span>
                       <span className="block mt-1.5">
-                        However, critical exceptions exist. If a non-invasive device is used for <strong>channeling or storing</strong> body fluids (such as blood bags or infusion lines), it escalates to Class B due to chemical leaching (plasticizers like DEHP) or microbial contamination. Furthermore, if a device <strong>modifies the biological or chemical composition</strong> of blood or fluids (such as a hemodialysis filter or oxygenator membrane), it is classified as Class C (or Class B if limited to basic filtration or centrifugation). Simple wound coverings are Class A, but advanced wound dressings managing the wound micro-environment or promoting primary healing are Class B or C.
+                        However, critical exceptions exist. If a non-invasive device is used for <strong>channeling or storing</strong> body fluids (such as blood bags or infusion lines), it escalates to Class B due to chemical leaching (plasticizers like DEHP) or microbial contamination. Furthermore, if a device <strong>modifies the biological or chemical composition</strong> of blood or fluids (such as a <TermLink termId="hemodialysis" onSelect={setActiveHelpTerm}>hemodialysis filter</TermLink> or oxygenator membrane), it is classified as Class C (or Class B if limited to basic filtration or centrifugation). Simple wound coverings are Class A, but advanced <TermLink termId="hydrocolloid_alginate" onSelect={setActiveHelpTerm}>wound dressings</TermLink> managing the wound micro-environment or promoting primary healing are Class B or C.
                       </span>
                     </p>
                   </div>
@@ -966,10 +1066,10 @@ export default function IndianMDRClassifier({ onClassificationCompleted, isSecon
                     
                     <p className="text-[11.5px] text-slate-600 leading-relaxed space-y-2">
                       <span>
-                        Invasive medical devices are designed to penetrate inside the patient's body, either through natural anatomical orifices (e.g., ear, nose, mouth, esophagus, urethra) or surgically via incision through the dermal layer. Under CDSCO Rules 5-8, risk scales rapidly based on two main variables: <strong>duration of tissue contact</strong> and the <strong>fragility of the target tissue</strong>.
+                        Invasive medical devices are designed to penetrate inside the patient's body, either through <TermLink termId="orifices" onSelect={setActiveHelpTerm}>natural anatomical orifices</TermLink> (e.g., ear, nose, mouth, esophagus, urethra) or surgically via incision through the dermal layer. Under CDSCO Rules 5-8, risk scales rapidly based on two main variables: <strong>duration of tissue contact</strong> and the <strong>fragility of the target tissue</strong>.
                       </span>
                       <span className="block mt-1.5">
-                        Orifice-entering devices are Class A for transient use (&lt;60 minutes) but become Class B or C as contact extends to days or months. For surgically invasive devices, transient contact is Class B (such as a scalpel). However, if the device directly monitors, diagnoses, or corrects defects of the <strong>central nervous system (CNS)</strong> or the <strong>central circulatory system (CCS)</strong> (e.g. coronary arteries), even for transient surgical contact, it is immediately elevated to Class C or Class D. Permanent surgically implantable devices are classified as Class C (e.g., orthopedic bone plates or joint prosthetics) but escalate to Class D if they contact the heart, brain, or major circulatory pathways (e.g., pacemakers and vascular stents).
+                        Orifice-entering devices are Class A for <TermLink termId="transient" onSelect={setActiveHelpTerm}>transient use</TermLink> (&lt;60 minutes) but become Class B or C as contact extends to days or months (such as a <TermLink termId="catheter" onSelect={setActiveHelpTerm}>urinary catheter</TermLink>). For <TermLink termId="surgically_invasive" onSelect={setActiveHelpTerm}>surgically invasive</TermLink> devices, transient contact is Class B (such as a scalpel). However, if the device directly monitors, diagnoses, or corrects defects of the <TermLink termId="central_nervous" onSelect={setActiveHelpTerm}>central nervous system (CNS)</TermLink> or the <TermLink termId="central_circulatory" onSelect={setActiveHelpTerm}>central circulatory system (CCS)</TermLink> (e.g. coronary arteries), even for transient surgical contact, it is immediately elevated to Class C or Class D. Permanent surgically <TermLink termId="implantable" onSelect={setActiveHelpTerm}>implantable devices</TermLink> are classified as Class C (e.g., orthopedic bone plates or joint prosthetics) but escalate to Class D if they contact the heart, brain, or major circulatory pathways (e.g., pacemakers and <TermLink termId="stent" onSelect={setActiveHelpTerm}>vascular stents</TermLink>).
                       </span>
                     </p>
                   </div>
@@ -1028,7 +1128,7 @@ export default function IndianMDRClassifier({ onClassificationCompleted, isSecon
 
                     <p className="text-[11.5px] text-slate-600 leading-relaxed space-y-2">
                       <span>
-                        Active devices are powered instruments whose primary operation relies on an external source of energy (e.g. electrical mains, internal chemical batteries, or pneumatic gas lines) rather than gravity or manual human physical force. Under CDSCO Rules 9-12, active devices present significant regulatory risks because they actively inject or exchange energy, currents, or radiological rays with human tissues.
+                        <TermLink termId="active" onSelect={setActiveHelpTerm}>Active devices</TermLink> are powered instruments whose primary operation relies on an external source of energy (e.g. electrical mains, internal chemical batteries, or pneumatic gas lines) rather than gravity or manual human physical force. Under CDSCO Rules 9-12, active devices present significant regulatory risks because they actively inject or exchange energy, currents, or radiological rays with human tissues.
                       </span>
                       <span className="block mt-1.5">
                         Active devices designed for therapeutic energy exchange are Class B (such as basic muscle stimulators or operating lights) but elevate to Class C if the energy administration involves significant clinical hazards (e.g. electrosurgical generators, external cardiac defibrillators, or surgical laser generators). For diagnostic active devices (Rule 10), standard monitoring machines are Class B, but active monitors measuring critical physiological parameters where variance could pose <strong>immediate danger or cardiac/cerebral collapse</strong> (e.g., intensive care cardiac output or blood gas parameters) are Class C. Similarly, fluid or drug delivery pumps are Class B, but syringe infusion pumps and anesthesia gas vaporizers are Class C due to the high severity of potential dosage administration errors. All other active devices defaults to Class B.
@@ -1086,7 +1186,7 @@ export default function IndianMDRClassifier({ onClassificationCompleted, isSecon
                         Special and Combination Devices are complex products that merge standard physical device architectures with secondary clinical elements like biological cells, chemical drug components, barriers, or sterilizers. Because their primary mechanism of action is mechanical, they are legally classified as medical devices rather than medicines, but they fall under intensive CDSCO Rules 13-16 due to potential biochemical cross-reactions.
                       </span>
                       <span className="block mt-1.5">
-                        Combination products incorporating an <strong>ancillary medicinal substance</strong> (which acts secondary to the device's physical function, such as Sirolimus coating on a cardiac stent or heparin coating on a dialysis catheter) are classified as Class D. Devices manufactured utilizing <strong>animal or human non-viable tissue/cell derivatives</strong> (such as porcine heart valves, catgut biological sutures, or bovine collagen wound matrices) are also Class D due to animal-source pathogen transfer and immunogenic rejection risks. Contraceptives or sexually transmitted disease prevention devices are Class C for standard barriers (such as condoms or diaphragms) but escalate to Class D if they are long-term implantable devices (such as copper intrauterine loops). Disinfectants and sterilization validation chemical markers are Class B for general cleaning, but Class C if specifically intended for disinfecting invasive instruments or contact lens care.
+                        Combination products incorporating an <TermLink termId="ancillary_substance" onSelect={setActiveHelpTerm}>ancillary medicinal substance</TermLink> (which acts secondary to the device's physical function, such as Sirolimus coating on a cardiac <TermLink termId="stent" onSelect={setActiveHelpTerm}>stent</TermLink> or heparin coating on a dialysis <TermLink termId="catheter" onSelect={setActiveHelpTerm}>catheter</TermLink>) are classified as Class D. Devices manufactured utilizing <TermLink termId="bioburden" onSelect={setActiveHelpTerm}>animal or human non-viable tissue/cell derivatives</TermLink> (such as porcine heart valves, catgut biological sutures, or bovine collagen wound matrices) are also Class D due to animal-source <TermLink termId="bioburden" onSelect={setActiveHelpTerm}>pathogen transfer</TermLink> and immunogenic rejection risks. Contraceptives or sexually transmitted disease prevention devices are Class C for standard barriers (such as condoms or diaphragms) but escalate to Class D if they are long-term <TermLink termId="implantable" onSelect={setActiveHelpTerm}>implantable devices</TermLink> (such as copper intrauterine loops). Disinfectants and sterilization validation chemical markers are Class B for general cleaning, but Class C if specifically intended for disinfecting invasive instruments or contact lens care.
                       </span>
                     </p>
                   </div>
@@ -1261,10 +1361,10 @@ export default function IndianMDRClassifier({ onClassificationCompleted, isSecon
                       Lesson 4: CDSCO Statutory Classification Framework (MDR 2017)
                     </h3>
                     <p className="text-xs text-slate-600 leading-relaxed mt-2">
-                      Under the Medical Device Rules (MDR) 2017, the Central Drugs Standard Control Organisation (CDSCO) regulates products via a structured, rule-based statutory framework. Device risk is not defined abstractly; rather, it is mathematically proportional to <strong>biological invasiveness depth</strong>, <strong>active energy exchange</strong>, and <strong>duration of clinical contact</strong>.
+                      Under the Medical Device Rules (MDR) 2017, the Central Drugs Standard Control Organisation (CDSCO) regulates products via a structured, rule-based statutory framework. Device risk is not defined abstractly; rather, it is mathematically proportional to <strong>biological <TermLink termId="invasive" onSelect={setActiveHelpTerm}>invasiveness depth</TermLink></strong>, <strong><TermLink termId="active" onSelect={setActiveHelpTerm}>active energy exchange</TermLink></strong>, and <strong>duration of clinical contact</strong>.
                     </p>
                     <p className="text-xs text-slate-600 leading-relaxed mt-2">
-                      The framework comprises <strong>16 precise classification rules</strong> divided into four categories: Rules 1-4 (Non-Invasive), Rules 5-8 (Invasive), Rules 9-12 (Active), and Rules 13-16 (Special & Combination). Applying these rules accurately assigns any medical device to one of four regulatory tiers: <strong>Class A (Low Risk)</strong>, <strong>Class B (Low-Moderate Risk)</strong>, <strong>Class C (Moderate-High Risk)</strong>, or <strong>Class D (High Risk)</strong>.
+                      The framework comprises <strong>16 precise classification rules</strong> divided into four categories: Rules 1-4 (Non-Invasive), Rules 5-8 (<TermLink termId="invasive" onSelect={setActiveHelpTerm}>Invasive</TermLink>), Rules 9-12 (<TermLink termId="active" onSelect={setActiveHelpTerm}>Active</TermLink>), and Rules 13-16 (Special & <TermLink termId="ancillary_substance" onSelect={setActiveHelpTerm}>Combination</TermLink>). Applying these rules accurately assigns any medical device to one of four regulatory tiers: <strong>Class A (Low Risk)</strong>, <strong>Class B (Low-Moderate Risk)</strong>, <strong>Class C (Moderate-High Risk)</strong>, or <strong>Class D (High Risk)</strong>.
                     </p>
                   </div>
                   <div className="bg-indigo-50/50 border border-indigo-100 p-4 rounded-xl">
@@ -1476,7 +1576,7 @@ export default function IndianMDRClassifier({ onClassificationCompleted, isSecon
                   }
 
                   return (
-                    <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
+                    <div className="space-y-2">
                       {filteredRules.map(rule => {
                         const isExpanded = expandedRule === rule.id;
                         const classColors: Record<string, string> = {
@@ -1535,7 +1635,7 @@ export default function IndianMDRClassifier({ onClassificationCompleted, isSecon
                                 <div>
                                   <span className="text-[10px] font-bold text-indigo-900 block uppercase tracking-wide">CDSCO Statutory Directive:</span>
                                   <p className="text-slate-700 mt-1 font-medium leading-relaxed bg-white p-3 rounded-lg border border-indigo-100/30 shadow-inner">
-                                    {rule.clause}
+                                    <ParsedText text={rule.clause} onSelect={setActiveHelpTerm} />
                                   </p>
                                 </div>
 
@@ -1547,7 +1647,7 @@ export default function IndianMDRClassifier({ onClassificationCompleted, isSecon
                                       {rule.examples.map((item, i) => (
                                         <div key={i} className="flex items-start gap-1.5 text-[11px] text-slate-600">
                                           <CheckCircle2 size={11} className="text-emerald-500 mt-0.5 flex-shrink-0" />
-                                          <span>{item}</span>
+                                          <span><ParsedText text={item} onSelect={setActiveHelpTerm} /></span>
                                         </div>
                                       ))}
                                     </div>
@@ -2146,6 +2246,56 @@ export default function IndianMDRClassifier({ onClassificationCompleted, isSecon
                     </ul>
                   </div>
                 </div>
+
+                {/* Glossary Sync Engine Integration */}
+                {syncTerm && (
+                  <div className="bg-indigo-900/30 border border-indigo-500/30 rounded-xl p-4.5 space-y-3.5 transition-all animate-fade-in">
+                    <div className="flex justify-between items-center border-b border-indigo-900/50 pb-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                        </span>
+                        <span className="text-[10px] text-emerald-400 font-extrabold uppercase font-mono tracking-widest">
+                          Academy Sync Active
+                        </span>
+                      </div>
+                      <span className="text-[9.5px] text-indigo-400 font-mono font-bold uppercase tracking-wider">
+                        {syncTerm.category}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <h4 className="text-xs font-black text-white uppercase tracking-wide">
+                        {syncTerm.name}
+                      </h4>
+                      <p className="text-slate-300 text-[11px] leading-relaxed font-medium">
+                        {syncTerm.definition}
+                      </p>
+                    </div>
+
+                    {/* Inline micro-schematic diagram */}
+                    <div className="rounded-xl overflow-hidden border border-indigo-900/80 bg-slate-950/40 p-1">
+                      {syncTerm.renderDiagram()}
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <span className="text-[9.5px] text-indigo-300 font-bold uppercase tracking-wider block">
+                        CDSCO Real-World Examples:
+                      </span>
+                      <div className="flex flex-wrap gap-1">
+                        {syncTerm.examples.map((ex, idx) => (
+                          <span 
+                            key={idx} 
+                            className="text-[9.5px] px-2 py-0.5 bg-indigo-950/80 border border-indigo-800/40 text-slate-200 rounded font-bold font-mono tracking-tight"
+                          >
+                            {ex}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="p-3 bg-indigo-900/20 border border-indigo-900/40 rounded-xl text-[10.5px] text-indigo-300 leading-normal flex items-start gap-2">
