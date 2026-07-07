@@ -135,6 +135,7 @@ export default function App() {
   // 1: Indian MDR Classifier, 2: Stent Story Study, 3: Biocompatibility, 4: Design Controls, 5: Risk FMEA, 6: Design Transfer & PMS, 7: Templates
   const [activeTab, setActiveTab] = useState<number>(1);
   const [pmsActiveSubTab, setPmsActiveSubTab] = useState<'transfer' | 'pms'>('transfer');
+  const [isScoreVisible, setIsScoreVisible] = useState(false);
   
   // Phase 1 - Interactive Classification Simulator States
   const [simContact, setSimContact] = useState<string>('circulatory');
@@ -504,7 +505,13 @@ export default function App() {
         {/* Right Side: Academy Supervisor Coach & Progress - 4 Cols */}
         <div className="lg:col-span-4 space-y-6 flex flex-col" id="academy-sidebar">
           {/* Progress Ring / Dashboard Widget */}
-          <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 text-center" id="academy-progress">
+          <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 text-center relative" id="academy-progress">
+            <button
+              onClick={() => setIsScoreVisible(!isScoreVisible)}
+              className="absolute top-4 right-4 text-xs font-medium text-slate-500 hover:text-blue-600 transition-colors px-2 py-1 bg-slate-50 hover:bg-blue-50 rounded"
+            >
+              {isScoreVisible ? 'Hide Score' : 'Show Score'}
+            </button>
             <div className="flex items-center gap-1.5 mb-4 text-left">
               <span className="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
                 <Users size={16} />
@@ -512,67 +519,73 @@ export default function App() {
               <h3 className="font-bold text-slate-800 text-xs uppercase tracking-wider">RAC Forge Academy Score</h3>
             </div>
 
-            <div className="relative inline-flex items-center justify-center mb-3">
-              <svg className="w-24 h-24 transform -rotate-90">
-                {/* Background Ring */}
-                <circle
-                  cx="48"
-                  cy="48"
-                  r="38"
-                  strokeWidth="8"
-                  stroke="#f1f5f9"
-                  fill="transparent"
-                />
-                {/* Foreground Progress */}
-                <circle
-                  cx="48"
-                  cy="48"
-                  r="38"
-                  strokeWidth="8"
-                  stroke="#2563eb"
-                  fill="transparent"
-                  strokeDasharray={2 * Math.PI * 38}
-                  strokeDashoffset={2 * Math.PI * 38 * (1 - overallPercentage / 100)}
-                  className="transition-all duration-500"
-                />
-              </svg>
-              <span className="absolute text-xl font-black text-slate-800 font-mono">
-                {overallPercentage}%
-              </span>
-            </div>
+            {isScoreVisible ? (
+              <>
+                <div className="relative inline-flex items-center justify-center mb-3">
+                  <svg className="w-24 h-24 transform -rotate-90">
+                    {/* Background Ring */}
+                    <circle
+                      cx="48"
+                      cy="48"
+                      r="38"
+                      strokeWidth="8"
+                      stroke="#f1f5f9"
+                      fill="transparent"
+                    />
+                    {/* Foreground Progress */}
+                    <circle
+                      cx="48"
+                      cy="48"
+                      r="38"
+                      strokeWidth="8"
+                      stroke="#2563eb"
+                      fill="transparent"
+                      strokeDasharray={2 * Math.PI * 38}
+                      strokeDashoffset={2 * Math.PI * 38 * (1 - overallPercentage / 100)}
+                      className="transition-all duration-500"
+                    />
+                  </svg>
+                  <span className="absolute text-xl font-black text-slate-800 font-mono">
+                    {overallPercentage}%
+                  </span>
+                </div>
 
-            <span className="text-xs font-bold text-slate-700 block mb-1">
-              Class D Onboarding Training Project
-            </span>
-            <p className="text-[10px] text-slate-400 mb-4">
-              Complete each active step's requirements to prove standard compliance.
-            </p>
+                <span className="text-xs font-bold text-slate-700 block mb-1">
+                  Class D Onboarding Training Project
+                </span>
+                <p className="text-[10px] text-slate-400 mb-4">
+                  Complete each active step's requirements to prove standard compliance.
+                </p>
 
-            {/* Checklist of steps */}
-            <div className="space-y-2 text-left border-t border-slate-100 pt-4">
-              {Object.entries(completedMilestones).map(([key, isDone]) => {
-                let label = '';
-                if (key === 'concept') label = 'M1. Indian MDR 2017 Classifier';
-                else if (key === 'biocompatibility') label = 'M2. Stent Story Completed';
-                else if (key === 'design_files') label = 'M3. Biocompatibility Mapped';
-                else if (key === 'risk') label = 'M4. Design Controls Trace';
-                else if (key === 'design_transfer') label = 'M5. FMEA Hazards Mitigated';
-                else if (key === 'pms') label = 'M6. Transfer & PMS Released';
+                {/* Checklist of steps */}
+                <div className="space-y-2 text-left border-t border-slate-100 pt-4">
+                  {Object.entries(completedMilestones).map(([key, isDone]) => {
+                    let label = '';
+                    if (key === 'concept') label = 'M1. Indian MDR 2017 Classifier';
+                    else if (key === 'biocompatibility') label = 'M2. Stent Story Completed';
+                    else if (key === 'design_files') label = 'M3. Biocompatibility Mapped';
+                    else if (key === 'risk') label = 'M4. Design Controls Trace';
+                    else if (key === 'design_transfer') label = 'M5. FMEA Hazards Mitigated';
+                    else if (key === 'pms') label = 'M6. Transfer & PMS Released';
 
-                return (
-                  <div key={key} className="flex items-center justify-between text-xs">
-                    <span className={isDone ? 'text-slate-400 line-through' : 'text-slate-600 font-medium'}>
-                      {label}
-                    </span>
-                    <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center text-[8px] font-bold ${
-                      isDone ? 'bg-green-100 border-green-300 text-green-700' : 'bg-slate-50 border-slate-200 text-transparent'
-                    }`}>
-                      ✓
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
+                    return (
+                      <div key={key} className="flex items-center justify-between text-xs">
+                        <span className={isDone ? 'text-slate-400 line-through' : 'text-slate-600 font-medium'}>
+                          {label}
+                        </span>
+                        <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center text-[8px] font-bold ${
+                          isDone ? 'bg-green-100 border-green-300 text-green-700' : 'bg-slate-50 border-slate-200 text-transparent'
+                        }`}>
+                          ✓
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <p className="text-xs text-slate-500 py-4 italic">Score details are hidden. Click "Show Score" to view your progress.</p>
+            )}
           </div>
 
           {/* Supervisor's Guided Narration / The Story Thread */}
