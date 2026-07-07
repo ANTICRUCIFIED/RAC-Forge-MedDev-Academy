@@ -1,0 +1,6 @@
+{
+  "name": "RAC Forge MedDev Academy",
+  "description": "An interactive regulatory affairs training platform and ISO 10993 biocompatibility assessment tool for Class D medical devices.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
