@@ -137,6 +137,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<number>(1);
   const [pmsActiveSubTab, setPmsActiveSubTab] = useState<'transfer' | 'pms'>('transfer');
   const [isScoreVisible, setIsScoreVisible] = useState(false);
+  const [isConsoleVisible, setIsConsoleVisible] = useState(false);
   
   // Phase 1 - Interactive Classification Simulator States
   const [simContact, setSimContact] = useState<string>('circulatory');
@@ -594,45 +595,61 @@ export default function App() {
           )}
 
           {/* Supervisor's Guided Narration / The Story Thread */}
-          <div className="bg-slate-900 text-slate-100 p-5 rounded-2xl shadow-md flex-1 flex flex-col justify-between" id="narrator-console">
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-ping"></div>
-                <span className="text-[10px] font-bold font-mono tracking-wider text-slate-400 uppercase">
-                  Supervisor Story Console
-                </span>
-              </div>
+          {isConsoleVisible ? (
+            <div className="bg-slate-900 text-slate-100 p-5 rounded-2xl shadow-md flex-1 flex flex-col justify-between relative" id="narrator-console">
+              <button
+                onClick={() => setIsConsoleVisible(false)}
+                className="absolute top-4 right-4 text-xs font-medium text-slate-400 hover:text-white transition-colors px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded"
+              >
+                Hide Console
+              </button>
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-ping"></div>
+                  <span className="text-[10px] font-bold font-mono tracking-wider text-slate-400 uppercase">
+                    Supervisor Story Console
+                  </span>
+                </div>
 
-              <div className="space-y-1.5">
-                <span className="text-[10px] text-blue-400 font-bold block uppercase">{activePhaseInfo.subtitle}</span>
-                <h4 className="font-extrabold text-sm leading-tight text-white">{activePhaseInfo.title}</h4>
-              </div>
+                <div className="space-y-1.5">
+                  <span className="text-[10px] text-blue-400 font-bold block uppercase">{activePhaseInfo.subtitle}</span>
+                  <h4 className="font-extrabold text-sm leading-tight text-white">{activePhaseInfo.title}</h4>
+                </div>
 
-              {/* Dynamic scrollable text segment */}
-              <div className="space-y-3 max-h-72 overflow-y-auto pr-1 text-[11px] leading-relaxed text-slate-300 scrollbar-thin">
-                {activePhaseInfo.narration.map((p, pIdx) => (
-                  <p key={pIdx}>{p}</p>
-                ))}
-              </div>
-            </div>
-
-            {/* Objectives Footer */}
-            <div className="mt-5 pt-4 border-t border-slate-800 space-y-3 bg-slate-900">
-              <div>
-                <span className="text-[9px] font-bold text-blue-400 uppercase tracking-wide block mb-1">Learning Outcomes</span>
-                <ul className="text-[10px] text-slate-400 space-y-1 pl-2 list-disc">
-                  {activePhaseInfo.learningObjectives.map((obj, oIdx) => (
-                    <li key={oIdx}>{obj}</li>
+                {/* Dynamic scrollable text segment */}
+                <div className="space-y-3 max-h-72 overflow-y-auto pr-1 text-[11px] leading-relaxed text-slate-300 scrollbar-thin">
+                  {activePhaseInfo.narration.map((p, pIdx) => (
+                    <p key={pIdx}>{p}</p>
                   ))}
-                </ul>
+                </div>
               </div>
 
-              <div className="bg-slate-800/60 p-2.5 rounded-xl border border-slate-700/50 text-[10px]">
-                <strong className="text-white font-semibold">Active Assignment:</strong>{' '}
-                <span className="text-slate-300">{activePhaseInfo.internAssignment}</span>
+              {/* Objectives Footer */}
+              <div className="mt-5 pt-4 border-t border-slate-800 space-y-3 bg-slate-900">
+                <div>
+                  <span className="text-[9px] font-bold text-blue-400 uppercase tracking-wide block mb-1">Learning Outcomes</span>
+                  <ul className="text-[10px] text-slate-400 space-y-1 pl-2 list-disc">
+                    {activePhaseInfo.learningObjectives.map((obj, oIdx) => (
+                      <li key={oIdx}>{obj}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="bg-slate-800/60 p-2.5 rounded-xl border border-slate-700/50 text-[10px]">
+                  <strong className="text-white font-semibold">Active Assignment:</strong>{' '}
+                  <span className="text-slate-300">{activePhaseInfo.internAssignment}</span>
+                </div>
               </div>
             </div>
-          </div>
+          ) : (
+            <button
+              onClick={() => setIsConsoleVisible(true)}
+              className="w-full bg-slate-900 p-4 rounded-2xl shadow-md border border-slate-800 text-center text-sm font-medium text-slate-300 hover:text-white hover:border-slate-600 hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
+            >
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-ping"></div>
+              Show Supervisor Console
+            </button>
+          )}
         </div>
       </main>
 
