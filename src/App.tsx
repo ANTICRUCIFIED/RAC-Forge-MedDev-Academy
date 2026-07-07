@@ -90,11 +90,23 @@ export default function App() {
             setDynamicTermData(data);
             setGlobalHelpTerm(null); // Clear static term
           } else {
+            let errorMsg = "Sorry, we could not generate a definition right now.";
+            if (res.status === 404) {
+              errorMsg = "API endpoint not found. This usually happens on Vercel deployments when serverless functions are not configured properly.";
+            } else if (res.status === 503) {
+               errorMsg = "The AI model is currently experiencing high demand. Please try again later.";
+            } else {
+               try {
+                 const errData = await res.json();
+                 if (errData.error) errorMsg = errData.error;
+               } catch (e) {}
+            }
+
             setDynamicTermData({
               id: "error",
               name: text,
               category: "Error",
-              definition: "Sorry, we could not generate a definition for this term right now due to high demand. Please try again later.",
+              definition: errorMsg,
               examples: []
             });
             setGlobalHelpTerm(null);
