@@ -114,6 +114,39 @@ Respond ONLY in valid JSON. Do not include markdown code block formatting (like 
     }
   });
 
+  app.post("/api/tts", async (req, res) => {
+    try {
+      const { text } = req.body;
+      if (!text) {
+        return res.status(400).json({ error: "Text is required" });
+      }
+
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const response = await ai.models.generateContent({
+        model: "gemini-3.1-flash-tts-preview",
+        contents: text,
+        config: {
+          responseModalities: ["AUDIO"],
+          speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: { voiceName: "Zephyr" }
+            }
+          }
+        }
+      });
+
+      const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+      if (!base64Audio) {
+        return res.status(500).json({ error: "Failed to generate audio" });
+      }
+
+      res.json({ audio: base64Audio });
+    } catch (error) {
+      console.error("TTS Error:", error);
+      res.status(500).json({ error: "Failed to generate TTS" });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

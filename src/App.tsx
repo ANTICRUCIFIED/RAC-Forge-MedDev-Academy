@@ -67,7 +67,9 @@ export default function App() {
 
   const handleSpeakSummary = async () => {
     if (isSpeaking) {
-      window.speechSynthesis.cancel();
+      if ((window as any).currentAudioSource) {
+        try { (window as any).currentAudioSource.stop(); } catch(e) {}
+      }
       setIsSpeaking(false);
       return;
     }
@@ -92,38 +94,50 @@ export default function App() {
       
       const utterance = new SpeechSynthesisUtterance(summaryText);
       // Try to use a Hindi voice if available, otherwise default
-      // Ensure voices are loaded
-      let voices = window.speechSynthesis.getVoices();
-      if (voices.length === 0) {
-        await new Promise(resolve => {
-          window.speechSynthesis.onvoiceschanged = () => {
-            voices = window.speechSynthesis.getVoices();
-            resolve(null);
-          };
-        });
-      }
-      
-      // Try to find a Hindi voice, or an Indian English voice as fallback
-      const hiVoice = voices.find(v => 
-        v.lang.replace('_', '-').toLowerCase().includes('hi-in') || 
-        v.name.toLowerCase().includes('hindi')
-      );
-      const inVoice = voices.find(v => v.lang.replace('_', '-').toLowerCase().includes('en-in'));
-      
-      if (hiVoice) {
-        utterance.voice = hiVoice;
-        utterance.lang = 'hi-IN';
-      } else if (inVoice) {
-        utterance.voice = inVoice;
-        utterance.lang = 'en-IN';
-      } else {
-        utterance.lang = 'hi-IN'; // Hint to the browser even if we couldn't find a specific voice object
-      }
-      
-      utterance.onend = () => setIsSpeaking(false);
-      
       setIsSpeaking(true);
-      window.speechSynthesis.speak(utterance);
+      // Fetch high-quality natural TTS from backend
+      const ttsResponse = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: summaryText })
+      });
+      
+      if (!ttsResponse.ok) {
+        const errText = await ttsResponse.text();
+        throw new Error("Failed to generate speech: " + errText);
+      }
+      
+      const ttsData = await ttsResponse.json();
+      if (ttsData.audio) {
+        const binary = atob(ttsData.audio);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+          bytes[i] = binary.charCodeAt(i);
+        }
+        
+        // Convert 16-bit PCM to Float32 for AudioBuffer
+        const int16 = new Int16Array(bytes.buffer);
+        const float32 = new Float32Array(int16.length);
+        for (let i = 0; i < int16.length; i++) {
+          float32[i] = int16[i] / 32768.0;
+        }
+        
+        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+        const audioBuffer = audioCtx.createBuffer(1, float32.length, 24000);
+        audioBuffer.getChannelData(0).set(float32);
+        
+        const source = audioCtx.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(audioCtx.destination);
+        source.onended = () => setIsSpeaking(false);
+        source.start(0);
+        
+        // Store source in a ref if we want to support stopping, but simple for now
+        (window as any).currentAudioSource = source; 
+      } else {
+        setIsSpeaking(false);
+        alert("Failed to get audio data.");
+      }
     } catch (error) {
       console.error("Error summarizing:", error);
       alert("Failed to summarize chapter. Please try again.");
