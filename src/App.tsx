@@ -53,124 +53,229 @@ export default function App() {
   const [activeChapter, setActiveChapter] = useState(1);
   const [completedChapters, setCompletedChapters] = useState<number[]>([]);
   
+  const contentRef = useRef<HTMLDivElement>(null);
   const [isNotesModalOpen, setIsNotesModalOpen] = useState(false);
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   
+  // Chapter summaries & high-quality PCM audio cache
+  const [chapterSummaries, setChapterSummaries] = useState<Record<number, string>>({});
+  const [chapterAudio, setChapterAudio] = useState<Record<number, Float32Array>>({});
+  const [isPreFetching, setIsPreFetching] = useState<Record<number, 'idle' | 'loading' | 'ready' | 'error'>>({});
+  
+  const preFetchPromises = useRef<Record<number, Promise<Float32Array>>>({});
+
   // Stop speaking when component unmounts or chapter changes
   useEffect(() => {
     return () => {
       window.speechSynthesis.cancel();
+      if ((window as any).currentAudioSource) {
+        try { (window as any).currentAudioSource.stop(); } catch(e) {}
+        (window as any).currentAudioSource = null;
+      }
       setIsSpeaking(false);
     };
   }, [activeChapter]);
 
+  // Decodes base64 string from Gemini TTS to PCM Float32Array (24kHz Mono)
+  const decodeBase64ToFloat32PCM = (base64Str: string): Float32Array => {
+    const binary = atob(base64Str);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    const int16 = new Int16Array(bytes.buffer);
+    const float32 = new Float32Array(int16.length);
+    for (let i = 0; i < int16.length; i++) {
+      float32[i] = int16[i] / 32768.0;
+    }
+    return float32;
+  };
+
+  // Ensures high-quality text & TTS audio are generated and cached for the target chapter
+  const ensureAudioForChapter = async (chapterId: number): Promise<Float32Array> => {
+    // If already cached, return immediately
+    if (chapterAudio[chapterId]) {
+      return chapterAudio[chapterId];
+    }
+
+    // If already prefetching, return the existing promise
+    if (preFetchPromises.current[chapterId]) {
+      return preFetchPromises.current[chapterId];
+    }
+
+    // Start a new pre-fetch process
+    const promise = (async () => {
+      setIsPreFetching(prev => ({ ...prev, [chapterId]: 'loading' }));
+      try {
+        let summaryText = chapterSummaries[chapterId];
+
+        // Step 1: Ensure we have the summary text
+        if (!summaryText) {
+          const textContent = contentRef.current?.innerText || "";
+          if (!textContent.trim() || textContent.length < 15) {
+            throw new Error("No chapter content available to summarize");
+          }
+
+          const sumResponse = await fetch('/api/summarize', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: textContent })
+          });
+
+          if (!sumResponse.ok) {
+            throw new Error("Summary API failed");
+          }
+
+          const sumData = await sumResponse.json();
+          if (!sumData.summary) {
+            throw new Error("Empty summary response");
+          }
+
+          summaryText = sumData.summary;
+          setChapterSummaries(prev => ({ ...prev, [chapterId]: summaryText }));
+        }
+
+        // Step 2: Ensure we generate the high-quality natural TTS audio
+        const ttsResponse = await fetch('/api/tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: summaryText })
+        });
+
+        if (!ttsResponse.ok) {
+          throw new Error("TTS API failed");
+        }
+
+        const ttsData = await ttsResponse.json();
+        if (!ttsData.audio) {
+          throw new Error("No audio returned from TTS API");
+        }
+
+        const float32PCM = decodeBase64ToFloat32PCM(ttsData.audio);
+
+        // Cache the result
+        setChapterAudio(prev => ({ ...prev, [chapterId]: float32PCM }));
+        setIsPreFetching(prev => ({ ...prev, [chapterId]: 'ready' }));
+        return float32PCM;
+      } catch (err) {
+        console.warn(`ensureAudioForChapter failed for chapter ${chapterId}:`, err);
+        setIsPreFetching(prev => ({ ...prev, [chapterId]: 'error' }));
+        delete preFetchPromises.current[chapterId];
+        throw err;
+      }
+    })();
+
+    preFetchPromises.current[chapterId] = promise;
+    return promise;
+  };
+
+  // Proactive background pre-fetching of current chapter's summary & natural TTS
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      ensureAudioForChapter(activeChapter).catch(() => {});
+    }, 400); // Small delay to let DOM stabilize
+
+    return () => clearTimeout(timer);
+  }, [activeChapter]);
+
+  // Plays high-quality PCM using browser's AudioContext
+  const playFloat32Audio = async (pcmData: Float32Array) => {
+    // Stop any existing speech synthesis or audio context source
+    window.speechSynthesis.cancel();
+    if ((window as any).currentAudioSource) {
+      try { (window as any).currentAudioSource.stop(); } catch(e) {}
+      (window as any).currentAudioSource = null;
+    }
+
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+      await audioCtx.resume();
+
+      const audioBuffer = audioCtx.createBuffer(1, pcmData.length, 24000);
+      audioBuffer.getChannelData(0).set(pcmData);
+
+      const source = audioCtx.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(audioCtx.destination);
+      source.onended = () => {
+        setIsSpeaking(false);
+        (window as any).currentAudioSource = null;
+      };
+
+      setIsSpeaking(true);
+      source.start(0);
+      (window as any).currentAudioSource = source;
+    } catch (err) {
+      console.error("Failed to play PCM audio:", err);
+      setIsSpeaking(false);
+    }
+  };
+
+  // Fallback to native Web Speech API if natural TTS is completely blocked/fails
+  const speakNativeInstantly = (text: string, onEndCallback?: () => void) => {
+    window.speechSynthesis.cancel();
+    if ((window as any).currentAudioSource) {
+      try { (window as any).currentAudioSource.stop(); } catch(e) {}
+    }
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    const voices = window.speechSynthesis.getVoices();
+    const hindiVoice = voices.find(v => v.lang.toLowerCase().includes('hi') || v.lang.toLowerCase().includes('in'));
+    if (hindiVoice) {
+      utterance.voice = hindiVoice;
+    }
+    utterance.rate = 0.95;
+
+    utterance.onend = () => {
+      setIsSpeaking(false);
+      if (onEndCallback) onEndCallback();
+    };
+    utterance.onerror = () => {
+      setIsSpeaking(false);
+    };
+
+    setIsSpeaking(true);
+    window.speechSynthesis.speak(utterance);
+  };
+
   const handleSpeakSummary = async () => {
+    // If currently speaking, toggle off immediately on click!
     if (isSpeaking) {
+      window.speechSynthesis.cancel();
       if ((window as any).currentAudioSource) {
         try { (window as any).currentAudioSource.stop(); } catch(e) {}
+        (window as any).currentAudioSource = null;
       }
       setIsSpeaking(false);
       return;
     }
 
     if (!contentRef.current) return;
-    
+
+    // Play instantly if already pre-fetched and cached!
+    if (chapterAudio[activeChapter]) {
+      await playFloat32Audio(chapterAudio[activeChapter]);
+      return;
+    }
+
+    // Otherwise wait for the active fetch promise or trigger a new one
     setIsSummarizing(true);
     try {
-      // Get text content of the chapter
-      const textContent = contentRef.current.innerText || "";
-      
-      const response = await fetch('/api/summarize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: textContent })
-      });
-      
-      if (!response.ok) {
-        const errText = await response.text();
-        console.error("Summarize API Error:", errText);
-        throw new Error("Failed to get summary: " + errText);
-      }
-      
-      const data = await response.json();
-      const summaryText = data.summary;
-      
-      const utterance = new SpeechSynthesisUtterance(summaryText);
-      // Try to use a Hindi voice if available, otherwise default
-      setIsSpeaking(true);
-      // Fetch high-quality natural TTS from backend
-      let usedNativeTTS = false;
-      try {
-        const ttsResponse = await fetch('/api/tts', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: summaryText })
-        });
-        
-        if (!ttsResponse.ok) {
-          throw new Error("TTS API failed");
-        }
-        
-        const ttsData = await ttsResponse.json();
-        if (ttsData.audio) {
-          const binary = atob(ttsData.audio);
-          const bytes = new Uint8Array(binary.length);
-          for (let i = 0; i < binary.length; i++) {
-            bytes[i] = binary.charCodeAt(i);
-          }
-          
-          const int16 = new Int16Array(bytes.buffer);
-          const float32 = new Float32Array(int16.length);
-          for (let i = 0; i < int16.length; i++) {
-            float32[i] = int16[i] / 32768.0;
-          }
-          
-          const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-          const audioBuffer = audioCtx.createBuffer(1, float32.length, 24000);
-          audioBuffer.getChannelData(0).set(float32);
-          
-          const source = audioCtx.createBufferSource();
-          source.buffer = audioBuffer;
-          source.connect(audioCtx.destination);
-          source.onended = () => setIsSpeaking(false);
-          source.start(0);
-          
-          (window as any).currentAudioSource = source; 
-        } else {
-          throw new Error("No audio data returned");
-        }
-      } catch (err) {
-        console.warn("High-quality TTS failed, falling back to native browser TTS", err);
-        const utterance = new SpeechSynthesisUtterance(summaryText);
-        // Try to find a Hindi voice
-        const voices = window.speechSynthesis.getVoices();
-        const hindiVoice = voices.find(v => v.lang.includes('hi') || v.lang.includes('in'));
-        if (hindiVoice) utterance.voice = hindiVoice;
-        
-        utterance.onend = () => setIsSpeaking(false);
-        utterance.onerror = () => setIsSpeaking(false);
-        window.speechSynthesis.speak(utterance);
-        usedNativeTTS = true;
-      }
-
-    } catch (error: any) {
-      console.error("Error summarizing:", error);
-      const errMsg = String(error.message || error);
-      if (errMsg.includes("429") || errMsg.includes("RESOURCE_EXHAUSTED") || errMsg.includes("quota")) {
-        setApiError("API Quota Limit Reached: The high-speed model free tier limit has been exhausted. Please try again in a few moments.");
-      } else {
-        setApiError("Summary Generation Failed: Could not summarize the chapter. Please check your network connection and try again.");
-      }
-    } finally {
+      const pcmData = await ensureAudioForChapter(activeChapter);
       setIsSummarizing(false);
+      await playFloat32Audio(pcmData);
+    } catch (err: any) {
+      console.error("High-quality TTS failed, falling back to native TTS:", err);
+      setIsSummarizing(false);
+      setIsSpeaking(false);
+      const summaryText = chapterSummaries[activeChapter] || "Sorry, summary ready nahi ho payi. Kripya thodi der baad fir se try karein.";
+      speakNativeInstantly(summaryText);
     }
   };
 
   const [selectedWordInfo, setSelectedWordInfo] = useState<{term: string, context: string, position: {x: number, y: number}} | null>(null);
-  
-  const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleMouseUp = (e: MouseEvent) => {

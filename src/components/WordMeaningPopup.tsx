@@ -49,8 +49,8 @@ export default function WordMeaningPopup({ term, context, position, onClose }: W
     <div 
       className="fixed z-50 bg-white rounded-xl shadow-xl border border-slate-200 w-80 overflow-hidden flex flex-col"
       style={{
-        left: `\${Math.min(position.x, window.innerWidth - 340)}px`,
-        top: `\${Math.min(position.y + 10, window.innerHeight - 200)}px`
+        left: `${Math.min(position.x, window.innerWidth - 340)}px`,
+        top: `${Math.min(position.y + 10, window.innerHeight - 200)}px`
       }}
     >
       <div className="bg-[#0f172a] text-white px-4 py-3 flex justify-between items-center">
