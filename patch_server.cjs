@@ -1,32 +1,73 @@
 const fs = require('fs');
-let content = fs.readFileSync('server.ts', 'utf8');
 
-const newEndpoint = `
-  app.post("/api/summarize", async (req, res) => {
-    try {
-      const { text } = req.body;
-      if (!text) {
-        return res.status(400).json({ error: "Text is required" });
-      }
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const prompt = \`Summarize the following chapter content in Hinglish (a mix of Hindi and English). Keep it conversational, like a teacher explaining to a student. Use English only for complex technical or regulatory terms, and Hindi for the conversational connecting parts. The summary should be concise (around 3-4 sentences) so it can be easily spoken out loud. Content: "\${text.substring(0, 5000)}"\`;
+const fallbackLogicString = (configProps) => `
+      const textModels = [
+        "gemini-3.1-flash",
+        "gemini-3.1-pro-preview",
+        "gemini-2.5-flash",
+        "gemini-2.0-flash",
+        "gemini-1.5-flash"
+      ];
       
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: prompt,
-        config: {
-          temperature: 0.7,
+      let response;
+      let lastError;
+      
+      for (const model of textModels) {
+        let retries = 2;
+        let success = false;
+        while (retries > 0 && !success) {
+          try {
+            response = await ai.models.generateContent({
+              model: model,
+              contents: prompt,
+              config: {
+${configProps}
+              }
+            });
+            success = true;
+            break;
+          } catch (error) {
+            lastError = error;
+            const status = error?.status || (error?.response?.status);
+            if (status === 503 || status === 429) {
+              retries--;
+              if (retries > 0) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                continue;
+              }
+            }
+            console.warn(\`Model \${model} failed: \${error.message || String(error)}\`);
+            break;
+          }
         }
-      });
+        if (success) {
+          console.log(\`Successfully used model: \${model}\`);
+          break;
+        }
+      }
       
-      res.json({ summary: response.text });
-    } catch (error) {
-      console.error("Gemini API Error:", error);
-      res.status(500).json({ error: "Failed to generate summary" });
-    }
-  });
+      if (!response) {
+        throw lastError || new Error("All fallback models failed.");
+      }
 `;
 
-content = content.replace('// Vite middleware for development', newEndpoint + '\n  // Vite middleware for development');
+let content = fs.readFileSync('server.ts', 'utf8');
+
+// Patch define
+const defineConfig = `                responseMimeType: "application/json",
+                temperature: 0.3,`;
+const defineRegex = /let response;[\s\S]*?(?=let jsonText)/;
+content = content.replace(defineRegex, fallbackLogicString(defineConfig) + '      ');
+
+// Patch summarize (second occurrence)
+// First we isolate the summarize route string
+const summarizeStart = 'app.post("/api/summarize"';
+const ttsStart = 'app.post("/api/tts"';
+const summarizePart = content.substring(content.indexOf(summarizeStart), content.indexOf(ttsStart));
+const summarizeConfig = `                temperature: 0.7,`;
+const summarizeRegex = /let response;[\s\S]*?(?=res\.json\(\{ summary: response\.text)/;
+const patchedSummarizePart = summarizePart.replace(summarizeRegex, fallbackLogicString(summarizeConfig) + '      ');
+content = content.replace(summarizePart, patchedSummarizePart);
+
 fs.writeFileSync('server.ts', content);
 console.log("Patched server.ts");

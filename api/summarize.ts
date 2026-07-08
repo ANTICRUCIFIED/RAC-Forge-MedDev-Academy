@@ -33,27 +33,56 @@ export default async function handler(req: Request) {
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     const prompt = `Act as an expert lecturer or trainer. Deliver a short, engaging lecture (about 4-6 sentences) based on the following chapter notes. Do NOT just read the text. Instead, explain the core concepts naturally in Hinglish (a conversational mix of Hindi and English). Use English for complex technical or regulatory terms, and Hindi for the conversational and explanatory parts. Speak directly to the learner as if you are training them in a classroom. Keep it concise so it can be easily spoken out loud. Content: "${text.substring(0, 5000)}"`;
     
+    
+    const textModels = [
+      "gemini-3.1-flash",
+      "gemini-3.1-pro-preview",
+      "gemini-2.5-flash",
+      "gemini-2.0-flash",
+      "gemini-1.5-flash"
+    ];
+    
     let response;
-    let retries = 3;
-    while (retries > 0) {
-      try {
-        response = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
-          contents: prompt,
-          config: {
-            temperature: 0.7,
+    let lastError;
+    
+    for (const model of textModels) {
+      let retries = 2;
+      let success = false;
+      while (retries > 0 && !success) {
+        try {
+          response = await ai.models.generateContent({
+            model: model,
+            contents: prompt,
+            config: {
+              temperature: 0.7,
+            }
+          });
+          success = true;
+          break;
+        } catch (error: any) {
+          lastError = error;
+          const status = error?.status || (error?.response?.status);
+          if (status === 503 || status === 429) {
+            retries--;
+            if (retries > 0) {
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              continue;
+            }
           }
-        });
-        break;
-      } catch (error: any) {
-        retries--;
-        if (retries === 0 || error?.status !== 503) {
-          throw error;
+          console.warn(`Model ${model} failed: ${error.message || String(error)}`);
+          break;
         }
-        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+      if (success) {
+        console.log(`Successfully used model: ${model}`);
+        break;
       }
     }
     
+    if (!response) {
+      throw lastError || new Error("All fallback models failed.");
+    }
+
     return new Response(JSON.stringify({ summary: response?.text || "" }), { 
       status: 200, 
       headers: { 'Content-Type': 'application/json' } 

@@ -142,9 +142,14 @@ export default function App() {
         setIsSpeaking(false);
         alert("Failed to get audio data.");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error summarizing:", error);
-      alert("Failed to summarize chapter. Please try again.");
+      const errMsg = String(error.message || error);
+      if (errMsg.includes("429") || errMsg.includes("RESOURCE_EXHAUSTED") || errMsg.includes("quota")) {
+        alert("API quota exceeded for this model. Please try again later.");
+      } else {
+        alert("Failed to summarize chapter. Please try again.");
+      }
     } finally {
       setIsSummarizing(false);
     }
