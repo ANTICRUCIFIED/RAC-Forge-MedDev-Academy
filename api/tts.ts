@@ -29,8 +29,8 @@ export default async function handler(req: Request) {
     
     
     const ttsModels = [
-      "gemini-2.5-flash-preview-tts",
       "gemini-3.1-flash-tts-preview",
+      "gemini-2.5-flash-preview-tts",
       "gemini-2.5-pro-preview-tts"
     ];
     
@@ -59,12 +59,25 @@ export default async function handler(req: Request) {
         } catch (error: any) {
           lastError = error;
           const status = error?.status || (error?.response?.status);
-          if (status === 503 || status === 429) {
+          const isRateLimit = 
+            status === 429 || 
+            error?.message?.includes("429") || 
+            error?.message?.includes("Quota") || 
+            error?.message?.includes("quota") || 
+            error?.message?.includes("RESOURCE_EXHAUSTED") ||
+            error?.status === "RESOURCE_EXHAUSTED" ||
+            error?.code === 429;
+
+          if (isRateLimit) {
+            retries = 0; // Don't retry on rate limits!
+          } else if (status === 503) {
             retries--;
             if (retries > 0) {
               await new Promise(resolve => setTimeout(resolve, 1000));
               continue;
             }
+          } else {
+            retries = 0;
           }
           console.warn(`Model ${model} failed: ${error.message || String(error)}`);
           break;
@@ -74,7 +87,14 @@ export default async function handler(req: Request) {
     }
     
     if (!response) {
-      throw lastError || new Error("TTS generation failed");
+      const errorStr = String(lastError?.message || lastError);
+      return new Response(JSON.stringify({ 
+        error: 'TTS generation failed', 
+        details: errorStr 
+      }), { 
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
 
     

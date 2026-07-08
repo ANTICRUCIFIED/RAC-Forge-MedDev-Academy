@@ -175,6 +175,12 @@ export default function App() {
           setChapterSummaries(prev => ({ ...prev, [chapterId]: summaryText }));
         }
 
+        // Skip high-quality TTS audio API call if we are in browser-native TTS mode
+        if (ttsMode === 'browser') {
+          setIsPreFetching(prev => ({ ...prev, [chapterId]: 'ready' }));
+          return { summary: summaryText };
+        }
+
         // Step 2: Ensure we generate the high-quality natural TTS audio
         try {
           const ttsResponse = await fetch('/api/tts', {
@@ -216,10 +222,18 @@ export default function App() {
           setIsPreFetching(prev => ({ ...prev, [chapterId]: 'ready' }));
           return { summary: summaryText };
         }
-      } catch (err) {
+      } catch (err: any) {
         console.warn(`ensureAudioForChapter failed for chapter ${chapterId}:`, err);
         setIsPreFetching(prev => ({ ...prev, [chapterId]: 'error' }));
         delete preFetchPromises.current[chapterId];
+
+        const errorStr = String(err?.message || err);
+        const isQuotaExceeded = errorStr.includes("quota") || errorStr.includes("429") || errorStr.includes("exhausted") || errorStr.includes("RESOURCE_EXHAUSTED") || errorStr.includes("Limit");
+        if (isQuotaExceeded) {
+          setTtsMode('browser');
+          setApiError("Your Gemini cloud API quota is fully exhausted for today (Free Tier Rate Limit). To ensure an uninterrupted experience, we have automatically switched your Speech Engine to 'Browser Native (Fast/Offline)'. You can still listen to all summaries and read without issues!");
+        }
+
         throw err;
       }
     })();
@@ -387,6 +401,15 @@ export default function App() {
       console.error("High-quality TTS failed, falling back to native TTS:", err);
       setIsSummarizing(false);
       setIsSpeaking(false);
+      
+      const errorStr = String(err?.message || err);
+      const isQuotaExceeded = errorStr.includes("quota") || errorStr.includes("429") || errorStr.includes("exhausted") || errorStr.includes("RESOURCE_EXHAUSTED") || errorStr.includes("Limit");
+      
+      if (isQuotaExceeded) {
+        setTtsMode('browser');
+        setApiError("Your Gemini cloud API quota is fully exhausted for today (Free Tier Rate Limit). To ensure an uninterrupted experience, we have automatically switched your Speech Engine to 'Browser Native (Fast/Offline)'. You can still listen to all summaries and read without issues!");
+      }
+
       const summaryText = chapterSummaries[activeChapter] || "Sorry, summary ready nahi ho payi. Kripya thodi der baad fir se try karein.";
       speakNativeInstantly(summaryText);
     }

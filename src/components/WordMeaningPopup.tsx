@@ -29,7 +29,17 @@ export default function WordMeaningPopup({ term, context, position, onClose }: W
           body: JSON.stringify({ term, context })
         });
         
-        if (!response.ok) throw new Error('Failed to fetch definition');
+        if (!response.ok) {
+          let errorMsg = 'Failed to fetch definition';
+          try {
+            const errData = await response.json();
+            if (errData.error) {
+              errorMsg = errData.error;
+              if (errData.details) errorMsg += `: ${errData.details}`;
+            }
+          } catch (e) {}
+          throw new Error(errorMsg);
+        }
         
         const data = await response.json();
         setDefinition(data);
