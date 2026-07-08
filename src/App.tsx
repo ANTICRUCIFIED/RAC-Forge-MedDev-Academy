@@ -56,6 +56,7 @@ export default function App() {
   const [isNotesModalOpen, setIsNotesModalOpen] = useState(false);
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
   
   // Stop speaking when component unmounts or chapter changes
   useEffect(() => {
@@ -158,9 +159,9 @@ export default function App() {
       console.error("Error summarizing:", error);
       const errMsg = String(error.message || error);
       if (errMsg.includes("429") || errMsg.includes("RESOURCE_EXHAUSTED") || errMsg.includes("quota")) {
-        alert("API quota exceeded for this model. Please try again later.");
+        setApiError("API Quota Limit Reached: The high-speed model free tier limit has been exhausted. Please try again in a few moments.");
       } else {
-        alert("Failed to summarize chapter. Please try again.");
+        setApiError("Summary Generation Failed: Could not summarize the chapter. Please check your network connection and try again.");
       }
     } finally {
       setIsSummarizing(false);
@@ -214,6 +215,31 @@ export default function App() {
         />
       )}
       {isNotesModalOpen && <NotesDownloadModal chapters={CHAPTERS} onClose={() => setIsNotesModalOpen(false)} />}
+
+      {apiError && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in" id="error-notice-modal">
+          <div className="bg-white rounded-2xl shadow-xl border border-red-100 max-w-md w-full overflow-hidden transform scale-100 transition-transform duration-300">
+            <div className="p-6 bg-red-50 border-b border-red-100 flex items-center gap-3">
+              <div className="bg-red-500 text-white p-2 rounded-full">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <h3 className="text-lg font-bold text-red-900">System Notice</h3>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-slate-600 leading-relaxed mb-6">{apiError}</p>
+              <div className="flex justify-end">
+                <button
+                  id="dismiss-error-btn"
+                  onClick={() => setApiError(null)}
+                  className="bg-slate-900 hover:bg-slate-800 text-white font-semibold px-5 py-2.5 rounded-xl transition-all text-sm cursor-pointer shadow-sm"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Top Header */}
       <header className="bg-[#0f172a] text-white py-4 px-6 flex justify-between items-center shadow-md z-10 sticky top-0">
