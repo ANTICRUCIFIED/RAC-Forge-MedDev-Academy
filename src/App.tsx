@@ -78,6 +78,20 @@ export default function App() {
     };
   }, [activeChapter]);
 
+  // Pre-load synthesis voices to ensure high quality on fallback
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.getVoices();
+      const handleVoices = () => {
+        window.speechSynthesis.getVoices();
+      };
+      window.speechSynthesis.addEventListener('voiceschanged', handleVoices);
+      return () => {
+        window.speechSynthesis.removeEventListener('voiceschanged', handleVoices);
+      };
+    }
+  }, []);
+
   // Decodes base64 string from Gemini TTS to PCM Float32Array (24kHz Mono)
   const decodeBase64ToFloat32PCM = (base64Str: string): Float32Array => {
     const binary = atob(base64Str);
@@ -125,7 +139,20 @@ export default function App() {
           });
 
           if (!sumResponse.ok) {
-            throw new Error("Summary API failed");
+            let errorMsg = "Summary API failed";
+            try {
+              const errData = await sumResponse.json();
+              if (errData.error) {
+                errorMsg = `Summary API failed: ${errData.error}`;
+                if (errData.details) errorMsg += ` (${errData.details})`;
+              }
+            } catch (e) {
+              try {
+                const textErr = await sumResponse.text();
+                if (textErr) errorMsg = `Summary API failed: ${textErr.substring(0, 200)}`;
+              } catch (e2) {}
+            }
+            throw new Error(errorMsg);
           }
 
           const sumData = await sumResponse.json();
@@ -145,7 +172,20 @@ export default function App() {
         });
 
         if (!ttsResponse.ok) {
-          throw new Error("TTS API failed");
+          let errorMsg = "TTS API failed";
+          try {
+            const errData = await ttsResponse.json();
+            if (errData.error) {
+              errorMsg = `TTS API failed: ${errData.error}`;
+              if (errData.details) errorMsg += ` (${errData.details})`;
+            }
+          } catch (e) {
+            try {
+              const textErr = await ttsResponse.text();
+              if (textErr) errorMsg = `TTS API failed: ${textErr.substring(0, 200)}`;
+            } catch (e2) {}
+          }
+          throw new Error(errorMsg);
         }
 
         const ttsData = await ttsResponse.json();
