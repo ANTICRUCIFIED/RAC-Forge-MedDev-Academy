@@ -1,15 +1,26 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+export const config = {
+  runtime: 'edge',
+};
+
 import { GoogleGenAI } from "@google/genai";
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: Request) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), { 
+      status: 405, 
+      headers: { 'Content-Type': 'application/json' } 
+    });
   }
 
   try {
-    const { text } = req.body;
+    const body = await req.json();
+    const { text } = body;
+    
     if (!text) {
-      return res.status(400).json({ error: "Text is required" });
+      return new Response(JSON.stringify({ error: 'Text is required' }), { 
+        status: 400, 
+        headers: { 'Content-Type': 'application/json' } 
+      });
     }
 
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -36,9 +47,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
     
-    res.status(200).json({ summary: response?.text || "" });
+    return new Response(JSON.stringify({ summary: response?.text || "" }), { 
+      status: 200, 
+      headers: { 'Content-Type': 'application/json' } 
+    });
   } catch (error: any) {
     console.error("Gemini API Error:", error);
-    res.status(500).json({ error: "Failed to generate summary" });
+    return new Response(JSON.stringify({ 
+      error: "Failed to generate summary", 
+      details: error.message || String(error) 
+    }), { 
+      status: 500, 
+      headers: { 'Content-Type': 'application/json' } 
+    });
   }
 }
