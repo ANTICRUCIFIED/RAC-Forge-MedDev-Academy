@@ -16,13 +16,16 @@ export default async function handler(req: Request) {
     }
 
     
-    if (!process.env.GEMINI_API_KEY) {
-      return new Response(JSON.stringify({ error: 'GEMINI_API_KEY is not configured in Vercel Environment Variables' }), { 
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENAI_API_KEY;
+    if (!apiKey) {
+      return new Response(JSON.stringify({ 
+        error: 'API key is not configured. Please add GEMINI_API_KEY or GOOGLE_API_KEY in your Vercel Environment Variables.' 
+      }), { 
         status: 500, 
         headers: { 'Content-Type': 'application/json' } 
       });
     }
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const ai = new GoogleGenAI({ apiKey });
     
     
     const ttsModels = [
