@@ -145,8 +145,7 @@ Respond ONLY in valid JSON. Do not include markdown code block formatting (like 
       
       const textModels = getModels();
 
-      
-      let response;
+      let responseStream = null;
       let lastError;
       
       for (const model of textModels) {
@@ -154,7 +153,7 @@ Respond ONLY in valid JSON. Do not include markdown code block formatting (like 
         let success = false;
         while (retries > 0 && !success) {
           try {
-            response = await ai.models.generateContent({
+            responseStream = await ai.models.generateContentStream({
               model: model,
               contents: prompt,
               config: {
@@ -191,21 +190,37 @@ Respond ONLY in valid JSON. Do not include markdown code block formatting (like 
           }
         }
         if (success) {
-          console.log(`Successfully used model: ${model}`);
+          console.log(`Successfully opened stream using model: ${model}`);
           break;
         }
       }
       
-      if (!response) {
+      if (!responseStream) {
         throw lastError || new Error("All fallback models failed.");
       }
-      res.json({ summary: response.text });
+
+      // Set headers for chunked transfer streaming
+      res.setHeader("Content-Type", "text/plain; charset=utf-8");
+      res.setHeader("Cache-Control", "no-cache, no-transform");
+      res.setHeader("Connection", "keep-alive");
+
+      for await (const chunk of responseStream) {
+        if (chunk.text) {
+          res.write(chunk.text);
+        }
+      }
+      res.end();
+
     } catch (error: any) {
       console.error("Gemini API Error:", error);
-      res.status(500).json({ 
-        error: "Failed to generate summary",
-        details: error?.message || String(error)
-      });
+      if (!res.headersSent) {
+        res.status(500).json({ 
+          error: "Failed to generate summary stream",
+          details: error?.message || String(error)
+        });
+      } else {
+        res.end();
+      }
     }
   });
 

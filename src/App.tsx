@@ -118,6 +118,57 @@ export default function App() {
     return float32;
   };
 
+  const fetchStreamingSummary = async (textContent: string, signal?: AbortSignal): Promise<string> => {
+    const response = await fetch('/api/summarize', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: textContent }),
+      signal
+    });
+
+    if (!response.ok) {
+      let errorMsg = "Summary API failed";
+      try {
+        const errData = await response.json();
+        if (errData.error) {
+          errorMsg = `Summary API failed: ${errData.error}`;
+          if (errData.details) errorMsg += ` (${errData.details})`;
+        }
+      } catch (e) {
+        try {
+          const textErr = await response.text();
+          if (textErr) errorMsg = `Summary API failed: ${textErr.substring(0, 200)}`;
+        } catch (e2) {}
+      }
+      throw new Error(errorMsg);
+    }
+
+    if (!response.body) {
+      throw new Error("No response body to stream");
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+    let accumulatedText = "";
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        accumulatedText += decoder.decode(value, { stream: true });
+      }
+    } finally {
+      reader.releaseLock();
+    }
+
+    const trimmed = accumulatedText.trim();
+    if (!trimmed) {
+      throw new Error("Empty summary streamed from API");
+    }
+
+    return trimmed;
+  };
+
   // Ensures high-quality text & TTS audio are generated and cached for the target chapter
   const ensureAudioForChapter = async (chapterId: number): Promise<{ summary: string; audio?: Float32Array }> => {
     // If already cached, return immediately
@@ -143,35 +194,7 @@ export default function App() {
             throw new Error("No chapter content available to summarize");
           }
 
-          const sumResponse = await fetch('/api/summarize', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: textContent })
-          });
-
-          if (!sumResponse.ok) {
-            let errorMsg = "Summary API failed";
-            try {
-              const errData = await sumResponse.json();
-              if (errData.error) {
-                errorMsg = `Summary API failed: ${errData.error}`;
-                if (errData.details) errorMsg += ` (${errData.details})`;
-              }
-            } catch (e) {
-              try {
-                const textErr = await sumResponse.text();
-                if (textErr) errorMsg = `Summary API failed: ${textErr.substring(0, 200)}`;
-              } catch (e2) {}
-            }
-            throw new Error(errorMsg);
-          }
-
-          const sumData = await sumResponse.json();
-          if (!sumData.summary) {
-            throw new Error("Empty summary response");
-          }
-
-          summaryText = sumData.summary;
+          summaryText = await fetchStreamingSummary(textContent);
           setChapterSummaries(prev => ({ ...prev, [chapterId]: summaryText }));
         }
 
@@ -323,9 +346,7 @@ export default function App() {
       return;
     }
 
-    if (!contentRef.current) return;
-
-    // Handle Browser-Only Speech Synthesis
+        // Handle Browser-Only Speech Synthesis
     if (ttsMode === 'browser') {
       setIsSummarizing(true);
       try {
@@ -335,22 +356,13 @@ export default function App() {
           try {
             const textContent = contentRef.current?.innerText || "";
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 6000); // Fast 6-second timeout
+            const timeoutId = setTimeout(() => controller.abort(), 12000); // 12-second timeout
             
-            const sumResponse = await fetch('/api/summarize', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ text: textContent }),
-              signal: controller.signal
-            });
+            textToSpeak = await fetchStreamingSummary(textContent, controller.signal);
             clearTimeout(timeoutId);
-
-            if (sumResponse.ok) {
-              const sumData = await sumResponse.json();
-              textToSpeak = sumData.summary;
-              if (textToSpeak) {
-                setChapterSummaries(prev => ({ ...prev, [activeChapter]: textToSpeak }));
-              }
+            
+            if (textToSpeak) {
+              setChapterSummaries(prev => ({ ...prev, [activeChapter]: textToSpeak }));
             }
           } catch (e) {
             console.warn("Summary API failed or timed out, reading from chapter text directly instead:", e);
