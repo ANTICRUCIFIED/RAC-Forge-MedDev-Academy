@@ -58,6 +58,17 @@ export default function App() {
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [ttsMode, setTtsMode] = useState<'gemini' | 'browser'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('ttsMode');
+      return (saved === 'browser') ? 'browser' : 'gemini';
+    }
+    return 'gemini';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('ttsMode', ttsMode);
+  }, [ttsMode]);
   
   // Chapter summaries & high-quality PCM audio cache
   const [chapterSummaries, setChapterSummaries] = useState<Record<number, string>>({});
@@ -300,6 +311,61 @@ export default function App() {
 
     if (!contentRef.current) return;
 
+    // Handle Browser-Only Speech Synthesis
+    if (ttsMode === 'browser') {
+      setIsSummarizing(true);
+      try {
+        let textToSpeak = chapterSummaries[activeChapter];
+        
+        if (!textToSpeak) {
+          try {
+            const textContent = contentRef.current?.innerText || "";
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 6000); // Fast 6-second timeout
+            
+            const sumResponse = await fetch('/api/summarize', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ text: textContent }),
+              signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+
+            if (sumResponse.ok) {
+              const sumData = await sumResponse.json();
+              textToSpeak = sumData.summary;
+              if (textToSpeak) {
+                setChapterSummaries(prev => ({ ...prev, [activeChapter]: textToSpeak }));
+              }
+            }
+          } catch (e) {
+            console.warn("Summary API failed or timed out, reading from chapter text directly instead:", e);
+          }
+        }
+
+        // If we still don't have a summary, read the first 4 key paragraphs/headings
+        if (!textToSpeak) {
+          const rawText = contentRef.current?.innerText || "";
+          const lines = rawText.split('\n')
+            .map(line => line.trim())
+            .filter(line => line.length > 25 && !line.includes("RAC Forger") && !line.includes("Course Curriculum"));
+          
+          textToSpeak = lines.slice(0, 4).join(". ");
+          if (!textToSpeak) {
+            textToSpeak = rawText.substring(0, 500) + "...";
+          }
+        }
+
+        setIsSummarizing(false);
+        speakNativeInstantly(textToSpeak);
+      } catch (err) {
+        setIsSummarizing(false);
+        const fallbackText = contentRef.current?.innerText?.substring(0, 500) || "Chapter content not found.";
+        speakNativeInstantly(fallbackText);
+      }
+      return;
+    }
+
     // Play instantly if already pre-fetched and cached!
     if (chapterAudio[activeChapter]) {
       await playFloat32Audio(chapterAudio[activeChapter]);
@@ -528,24 +594,70 @@ export default function App() {
               {/* Text Content */}
               <div className="p-8 lg:p-12" ref={contentRef}>
                 
-                <div className="flex items-center gap-4 mb-6">
-                  <h1 className="text-3xl font-bold text-[#0f172a] m-0">
-                    {CHAPTERS.find(c => c.id === activeChapter)?.title}
-                  </h1>
-                  <button
-                    onClick={handleSpeakSummary}
-                    disabled={isSummarizing}
-                    className="flex items-center justify-center p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-blue-600 transition-colors shrink-0"
-                    title={isSpeaking ? "Stop Summary" : "Listen to Chapter Summary (Hinglish)"}
-                  >
-                    {isSummarizing ? (
-                      <Loader2 className="w-6 h-6 animate-spin" />
-                    ) : isSpeaking ? (
-                      <VolumeX className="w-6 h-6 text-red-500" />
-                    ) : (
-                      <Volume2 className="w-6 h-6" />
-                    )}
-                  </button>
+                <div className="flex flex-col gap-3 mb-6 pb-4 border-b border-slate-100">
+                  <div className="flex items-center gap-4 justify-between sm:justify-start">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-[#0f172a] m-0">
+                      {CHAPTERS.find(c => c.id === activeChapter)?.title}
+                    </h1>
+                    <button
+                      onClick={handleSpeakSummary}
+                      disabled={isSummarizing}
+                      className="flex items-center justify-center p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-blue-600 transition-colors shrink-0 cursor-pointer"
+                      title={isSpeaking ? "Stop Summary" : "Listen to Chapter Summary"}
+                    >
+                      {isSummarizing ? (
+                        <Loader2 className="w-6 h-6 animate-spin" />
+                      ) : isSpeaking ? (
+                        <VolumeX className="w-6 h-6 text-red-500" />
+                      ) : (
+                        <Volume2 className="w-6 h-6" />
+                      )}
+                    </button>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    <span className="text-slate-500 font-semibold uppercase tracking-wider text-[10px]">Speech Engine:</span>
+                    <div className="inline-flex rounded-lg p-0.5 bg-slate-100 border border-slate-200">
+                      <button
+                        onClick={() => {
+                          if (isSpeaking) {
+                            window.speechSynthesis.cancel();
+                            if ((window as any).currentAudioSource) {
+                              try { (window as any).currentAudioSource.stop(); } catch(e) {}
+                            }
+                            setIsSpeaking(false);
+                          }
+                          setTtsMode('gemini');
+                        }}
+                        className={`px-3 py-1 rounded-md font-bold transition-all cursor-pointer ${
+                          ttsMode === 'gemini' 
+                            ? 'bg-[#0f172a] text-white shadow-sm' 
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        🌟 Gemini AI (Hinglish Class)
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (isSpeaking) {
+                            window.speechSynthesis.cancel();
+                            if ((window as any).currentAudioSource) {
+                              try { (window as any).currentAudioSource.stop(); } catch(e) {}
+                            }
+                            setIsSpeaking(false);
+                          }
+                          setTtsMode('browser');
+                        }}
+                        className={`px-3 py-1 rounded-md font-bold transition-all cursor-pointer ${
+                          ttsMode === 'browser' 
+                            ? 'bg-[#0f172a] text-white shadow-sm' 
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        💻 Browser Native (Fast/Offline)
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
                 
