@@ -1,28 +1,26 @@
+import { VercelRequest, VercelResponse } from '@vercel/node';
 import { GoogleGenAI } from "@google/genai";
 
-export default async function handler(req: any, res: any) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
     const { term, context } = req.body;
+    
     if (!term) {
       return res.status(400).json({ error: "Term is required" });
     }
 
-    if (!process.env.GEMINI_API_KEY) {
-      return res.status(500).json({ error: "GEMINI_API_KEY environment variable is missing on Vercel." });
-    }
-
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-    const prompt = `You are a medical device regulatory and scientific glossary assistant. 
-Define the following term precisely in the context of medical devices, cardiology, or regulatory affairs.
+    const prompt = `You are a medical device regulatory and scientific glossary assistant. Define the following term precisely in the context of medical devices, cardiology, or regulatory affairs.
+
 Provide a JSON response with the following keys:
 - "name": The term properly capitalized.
-- "category": A 1-2 word category.
+- "category": A 1-2 word category (e.g., "Pathology", "Biomaterial", "Anatomy", "Device", "Regulatory").
 - "definition": A 2-3 sentence definition.
-- "examples": An array of 1 to 3 string examples.
+- "examples": An array of 1 to 3 string examples related to it.
 
 Term to define: "${term}"
 ${context ? `Context: "${context}"` : ''}
@@ -52,9 +50,11 @@ Respond ONLY in valid JSON. Do not include markdown code block formatting (like 
     }
 
     let jsonText = response?.text || "{}";
-    if (jsonText.startsWith("\`\`\`json")) {
-      jsonText = jsonText.replace(/^\`\`\`json\n/, "").replace(/\n\`\`\`$/, "");
+    
+    if (jsonText.startsWith("```json")) {
+      jsonText = jsonText.replace(/^```json\n/, "").replace(/\n```$/, "");
     }
+    
     const data = JSON.parse(jsonText);
     
     res.status(200).json({
@@ -64,9 +64,8 @@ Respond ONLY in valid JSON. Do not include markdown code block formatting (like 
       definition: data.definition || "Definition not available.",
       examples: data.examples || []
     });
-
   } catch (error: any) {
     console.error("Gemini API Error:", error);
-    res.status(500).json({ error: "Failed to generate definition. " + (error.message || "") });
+    res.status(500).json({ error: "Failed to generate definition" });
   }
 }

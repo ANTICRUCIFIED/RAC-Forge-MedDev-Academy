@@ -1,130 +1,131 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
-import { useState, useEffect } from 'react';
-import { STORY_PHASES } from './data/caseStudyData';
-import { REGULATORY_TEMPLATES } from './data/templatesData';
-import BiocompatibilityEvaluator from './components/BiocompatibilityEvaluator';
-import RiskManagementBoard from './components/RiskManagementBoard';
-import DesignControlsTracer from './components/DesignControlsTracer';
-import DesignTransferAndPMS from './components/DesignTransferAndPMS';
-import IndianMDRClassifier, { TERM_MAP } from './components/IndianMDRClassifier';
-import ForgeFlowStentStory from './components/ForgeFlowStentStory';
-import { RegulatoryTermsPopup, REGULATORY_TERMS } from './components/RegulatoryTermsPopup';
+import { useState, useEffect, useRef } from 'react';
 import { 
-  Activity, 
-  Sparkles, 
-  BookOpen, 
-  ShieldAlert, 
-  Wrench, 
-  FileText, 
-  Download, 
+  Bell, 
+  User, 
   CheckCircle2, 
-  HelpCircle, 
+  Circle, 
   ChevronRight, 
-  RotateCcw, 
-  Building, 
-  Users, 
-  ExternalLink,
-  Award
+  AlertTriangle,
+  FileText,
+  Building,
+  Download, Volume2, VolumeX, Loader2,
+  Menu
 } from 'lucide-react';
+import { ChapterComponents } from './chapterComponents';
+import WordMeaningPopup from './components/WordMeaningPopup';
+import NotesDownloadModal from './components/NotesDownloadModal';
+
+const CHAPTERS = [
+  { id: 1, title: 'Chapter 1: Introduction to Medical Devices and Risk-Based Classification' },
+  { id: 2, title: 'Chapter 2: Why Are Medical Devices Classified? Understanding Risk-Based Classification in Simple Language' },
+  { id: 3, title: 'Chapter 3: Understanding the Language of Medical Device Classification' },
+  { id: 4, title: 'Chapter 4: How Regulators Actually Classify a Medical Device' },
+  { id: 5, title: 'Chapter 5: Understanding Non-Invasive Medical Devices The Foundation of Rules 1–4' },
+  { id: 6, title: 'Chapter 6: Rule 1 – Non-Invasive Medical Devices That Contact Intact Skin' },
+  { id: 7, title: 'Chapter 7: Rule 2 – Non-Invasive Medical Devices Intended for Channeling or Storing Blood, Body Liquids, Cells, Tissues, Liquids or Gases' },
+  { id: 8, title: 'Chapter 8: Rule 3 – Non-Invasive Medical Devices That Modify Blood or Other Liquids Before Administration' },
+  { id: 9, title: 'Chapter 9: Rule 4 – Non-Invasive Medical Devices Intended to Contact Injured Skin' },
+  { id: 10, title: 'Chapter 10: Understanding Invasive Medical Devices' },
+  { id: 11, title: 'Chapter 11: Rule 5 – Invasive Medical Devices Intended to Enter the Body Through a Body Orifice' },
+  { id: 12, title: 'Chapter 12: Rule 6 – Surgically Invasive Medical Devices Intended for Transient Use' },
+  { id: 13, title: 'Chapter 13: Rule 7 – Surgically Invasive Medical Devices Intended for Short-Term Use' },
+  { id: 14, title: 'Chapter 14: Rule 8 – Implantable Medical Devices and Surgically Invasive Medical Devices Intended for Long-Term Use' },
+  { id: 15, title: 'Chapter 15: Understanding Active Medical Devices' },
+  { id: 16, title: 'Chapter 16: Rule 9 – Active Therapeutic Medical Devices Intended to Administer or Exchange Energy' },
+  { id: 17, title: 'Chapter 17: Rule 10 – Active Medical Devices Intended for Diagnosis and Monitoring' },
+  { id: 18, title: 'Chapter 18: Rule 11 – Active Medical Devices Intended to Administer or Remove Medicinal Products, Body Liquids, or Other Substances' },
+  { id: 19, title: 'Chapter 19: Rule 12 – All Other Active Medical Devices' },
+  { id: 20, title: 'Chapter 20: Rule 13 – Medical Devices Incorporating a Medicinal Substance' },
+  { id: 21, title: 'Chapter 21: Rule 14 – Medical Devices Intended for Contraception or Prevention of the Transmission of Sexually Transmitted Diseases (STDs)' },
+  { id: 22, title: 'Chapter 22: Rule 15 – Medical Devices Intended Specifically for Disinfecting, Cleaning, Rinsing or Sterilizing Medical Devices' },
+  { id: 23, title: 'Chapter 23: Rule 16 – Medical Devices Intended Specifically for Recording Diagnostic X-Ray Images' },
+  { id: 23.5, title: 'Chapter 23.5: Master Classification Wizard' },
+  { id: 24, title: 'Chapter 24: How to Classify a Medical Device Step-by-Step' },
+  { id: 25, title: 'Chapter 25: Understanding Intended Purpose' },
+  { id: 26, title: 'Chapter 26: When More Than One Classification Rule Applies' },
+  { id: 27, title: 'Chapter 27: Master Medical Device Classification Decision Trees' },
+  { id: 28, title: 'Chapter 28: Practical Classification of Common Medical Devices' },
+  { id: 29, title: 'Chapter 29: The 100 Most Common Medical Device Classification Mistakes' },
+  { id: 30, title: 'Chapter 30: Practical Classification in Different Medical Specialties' },
+];
 
 export default function App() {
-  // Global Text Selection Term Lookup
-  const [globalHelpTerm, setGlobalHelpTerm] = useState<string | null>(null);
-  const [dynamicTermData, setDynamicTermData] = useState<any | null>(null);
-  const [isLoadingTerm, setIsLoadingTerm] = useState(false);
+  const [activeChapter, setActiveChapter] = useState(1);
+  const [completedChapters, setCompletedChapters] = useState<number[]>([]);
+  
+  const [isNotesModalOpen, setIsNotesModalOpen] = useState(false);
+  const [isSummarizing, setIsSummarizing] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  
+  // Stop speaking when component unmounts or chapter changes
+  useEffect(() => {
+    return () => {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+    };
+  }, [activeChapter]);
+
+  const handleSpeakSummary = async () => {
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+
+    if (!contentRef.current) return;
+    
+    setIsSummarizing(true);
+    try {
+      // Get text content of the chapter
+      const textContent = contentRef.current.innerText || "";
+      
+      const response = await fetch('/api/summarize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: textContent })
+      });
+      
+      if (!response.ok) throw new Error("Failed to get summary");
+      
+      const data = await response.json();
+      const summaryText = data.summary;
+      
+      const utterance = new SpeechSynthesisUtterance(summaryText);
+      // Try to use a Hindi voice if available, otherwise default
+      const voices = window.speechSynthesis.getVoices();
+      const hiVoice = voices.find(v => v.lang.includes('hi') || v.lang.includes('hi-IN'));
+      if (hiVoice) utterance.voice = hiVoice;
+      
+      utterance.onend = () => setIsSpeaking(false);
+      
+      setIsSpeaking(true);
+      window.speechSynthesis.speak(utterance);
+    } catch (error) {
+      console.error("Error summarizing:", error);
+      alert("Failed to summarize chapter. Please try again.");
+    } finally {
+      setIsSummarizing(false);
+    }
+  };
+
+  const [selectedWordInfo, setSelectedWordInfo] = useState<{term: string, context: string, position: {x: number, y: number}} | null>(null);
+  
+  const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const handleMouseUp = async () => {
+    const handleMouseUp = (e: MouseEvent) => {
       const selection = window.getSelection();
-      if (!selection || selection.isCollapsed) return;
-      const text = selection.toString().trim().toLowerCase();
-      if (!text || text.length < 4 || text.split(/\s+/).length > 3) return; // avoid triggering on very short words or long phrases
-
-      let foundTermId: string | null = null;
-
-      // 1. Exact match with TERM_MAP keys
-      for (const [key, termId] of Object.entries(TERM_MAP)) {
-        if (text === key.toLowerCase()) {
-           foundTermId = termId;
-           break;
-        }
-      }
-
-      // 2. Partial match with TERM_MAP keys
-      if (!foundTermId) {
-        for (const [key, termId] of Object.entries(TERM_MAP)) {
-          if (key.toLowerCase().includes(text)) {
-             foundTermId = termId;
-             break;
-          }
-        }
-      }
-
-      // 3. Partial match with REGULATORY_TERMS definitions or names
-      if (!foundTermId) {
-        for (const [key, termObj] of Object.entries(REGULATORY_TERMS)) {
-           if (termObj.name.toLowerCase().includes(text)) {
-             foundTermId = key;
-             break;
-           }
-        }
-      }
-
-      if (foundTermId) {
-        setGlobalHelpTerm(foundTermId);
-        setDynamicTermData(null);
-      } else {
-        // Fetch dynamically from our API
-        try {
-          setIsLoadingTerm(true);
-          const res = await fetch("/api/define", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ term: text })
-          });
-          if (res.ok) {
-            const data = await res.json();
-            setDynamicTermData(data);
-            setGlobalHelpTerm(null); // Clear static term
-          } else {
-            let errorMsg = "Sorry, we could not generate a definition right now.";
-            if (res.status === 404) {
-              errorMsg = "API endpoint not found. This usually happens on Vercel deployments when serverless functions are not configured properly.";
-            } else if (res.status === 503) {
-               errorMsg = "The AI model is currently experiencing high demand. Please try again later.";
-            } else {
-               try {
-                 const errData = await res.json();
-                 if (errData.error) errorMsg = errData.error;
-               } catch (e) {}
-            }
-
-            setDynamicTermData({
-              id: "error",
-              name: text,
-              category: "Error",
-              definition: errorMsg,
-              examples: []
-            });
-            setGlobalHelpTerm(null);
-          }
-        } catch (error) {
-          console.error("Failed to define term:", error);
-          setDynamicTermData({
-            id: "error",
-            name: text,
-            category: "Error",
-            definition: "An error occurred while connecting to the definition service. Please try again later.",
-            examples: []
-          });
-          setGlobalHelpTerm(null);
-        } finally {
-          setIsLoadingTerm(false);
-        }
+      if (selection && selection.toString().trim().length > 0 && selection.toString().trim().length < 50) {
+        const term = selection.toString().trim();
+        const range = selection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        const context = range.startContainer.parentElement?.textContent || "";
+        
+        setSelectedWordInfo({
+          term,
+          context,
+          position: { x: rect.left, y: rect.bottom }
+        });
       }
     };
 
@@ -132,550 +133,205 @@ export default function App() {
     return () => document.removeEventListener('mouseup', handleMouseUp);
   }, []);
 
-  // Master Tab State: 1 to 7
-  // 1: Indian MDR Classifier, 2: Stent Story Study, 3: Biocompatibility, 4: Design Controls, 5: Risk FMEA, 6: Design Transfer & PMS, 7: Templates
-  const [activeTab, setActiveTab] = useState<number>(1);
-  const [pmsActiveSubTab, setPmsActiveSubTab] = useState<'transfer' | 'pms'>('transfer');
-  const [isScoreVisible, setIsScoreVisible] = useState(false);
-  const [isConsoleVisible, setIsConsoleVisible] = useState(false);
-  
-  // Phase 1 - Interactive Classification Simulator States
-  const [simContact, setSimContact] = useState<string>('circulatory');
-  const [simDuration, setSimDuration] = useState<string>('permanent');
-  const [simHasDrug, setSimHasDrug] = useState<boolean>(true);
-  const [simHasBiological, setSimHasBiological] = useState<boolean>(false);
-
-  // Active click index for lifecycle timeline overview
-  const [activeTimelineStage, setActiveTimelineStage] = useState<number>(0);
-
-  // Dynamic Medical Device Risk Classification Engine (Self-Explanatory Classifier)
-  const getSimClassification = () => {
-    let ghtfClass = 'Class B (Low-Moderate Risk)';
-    let mdrClass = 'Class IIa';
-    let fdaClass = 'Class II [510(k) Premarket Notification]';
-    let standardRef = 'EU MDR Annex VIII Rule 1 / FDA 21 CFR Part 860 General Controls';
-    let description = 'General medical device controls and normal conformity pathways apply. Perfect for lower-risk non-invasive equipment.';
-    let conformityRoute = 'Draft technical document, self-declare compliance (Class I) or Notified Body simplified audit (Class IIa).';
-
-    if (simHasDrug) {
-      ghtfClass = 'Class D (Highest Risk)';
-      mdrClass = 'Class III';
-      fdaClass = 'Class III [PMA (Premarket Approval)]';
-      standardRef = 'EU MDR Annex VIII Rule 12 & Rule 14 (Drug-Device Combination Product)';
-      description = 'Devices incorporating an integral substance which, if used separately, can be considered an active pharmaceutical ingredient with ancillary effect, fall into the absolute highest risk tier.';
-      conformityRoute = 'Full quality system audit (ISO 13485), mandatory human clinical investigation (clinical trials), extensive pre-market audit, and Annual PSUR reports.';
-    } else if (simHasBiological) {
-      ghtfClass = 'Class D (Highest Risk)';
-      mdrClass = 'Class III';
-      fdaClass = 'Class III [PMA (Premarket Approval)]';
-      standardRef = 'EU MDR Annex VIII Rule 18 (Tissues or Cells of Animal Origin)';
-      description = 'Any medical device incorporating non-viable tissues of animal origin, or animal derivatives, triggers Class III/D oversight due to zoonotic pathogen and immunogenic risks.';
-      conformityRoute = 'Mandatory biological tissue validation safety protocols, animal-sourcing tracking system (Annex XIV), Notified Body audit, and extensive bioburden controls.';
-    } else if (simContact === 'circulatory' && simDuration === 'permanent') {
-      ghtfClass = 'Class D (Highest Risk)';
-      mdrClass = 'Class III';
-      fdaClass = 'Class III [PMA (Premarket Approval)]';
-      standardRef = 'EU MDR Annex VIII Rule 8 (Permanent Vascular Implant)';
-      description = 'Any surgical implantable device in direct, permanent contact with the heart, central circulatory system, or central nervous system is classified as Class III / Class D.';
-      conformityRoute = 'Full DHF audit, comprehensive ISO 10993 testing, porcine vascular modeling, CE design dossier certification, and 15-day immediate vigilance reporting constraints.';
-    } else if (simContact === 'circulatory' && simDuration === 'prolonged') {
-      ghtfClass = 'Class C (Moderate-High)';
-      mdrClass = 'Class IIb';
-      fdaClass = 'Class II [510(k) with special controls]';
-      standardRef = 'EU MDR Annex VIII Rule 8 (Short-Term Invasive Blood Contact)';
-      description = 'Surgically invasive devices intended for short-term use in direct contact with the central circulatory system.';
-      conformityRoute = 'Product-specific clinical evaluation plan, Notified Body design dossier audit, and proactive PMCF tracking.';
-    } else if (simContact === 'internal' && simDuration === 'permanent') {
-      ghtfClass = 'Class C (Moderate-High)';
-      mdrClass = 'Class IIb';
-      fdaClass = 'Class II [510(k) Premarket Notification]';
-      standardRef = 'EU MDR Annex VIII Rule 8 (Implantable Bone/Tissue Contact)';
-      description = 'Implantable devices not placed in direct contact with the heart, circulatory, or central nervous system.';
-      conformityRoute = 'Premarket 510(k) submission showing substantial equivalence, ISO 10993 mechanical test data, and passive complaint logs.';
-    } else if (simContact === 'skin' && simDuration === 'transient') {
-      ghtfClass = 'Class A (Low Risk)';
-      mdrClass = 'Class I';
-      fdaClass = 'Class I [General Controls Only / Exempt]';
-      standardRef = 'EU MDR Annex VIII Rule 1 (Non-Invasive Surface Contact)';
-      description = 'Devices with simple skin contact or fluid transfer boundaries with no active electrical components.';
-      conformityRoute = 'Manufacturer self-declaration, registration with national registries (EUDAMED/FDA GUDID), and basic quality control logs.';
+  const handleMarkComplete = () => {
+    if (!completedChapters.includes(activeChapter)) {
+      setCompletedChapters([...completedChapters, activeChapter]);
     }
-
-    return { ghtfClass, mdrClass, fdaClass, standardRef, description, conformityRoute };
-  };
-
-  // Tasks completion milestones tracker
-  const [completedMilestones, setCompletedMilestones] = useState<Record<string, boolean>>({
-    concept: false,
-    biocompatibility: false,
-    design_files: false,
-    risk: false,
-    design_transfer: false,
-    pms: false
-  });
-
-  const handleCompleteMilestone = (key: string) => {
-    setCompletedMilestones(prev => ({ ...prev, [key]: true }));
-  };
-
-  const handleResetProgress = () => {
-    setCompletedMilestones({
-      concept: false,
-      biocompatibility: false,
-      design_files: false,
-      risk: false,
-      design_transfer: false,
-      pms: false
-    });
-    setSimContact('circulatory');
-    setSimDuration('permanent');
-    setSimHasDrug(true);
-    setSimHasBiological(false);
-    setActiveTimelineStage(0);
-    setActiveTab(1);
-  };
-
-  // Calculate overall academy completion percentage
-  const completedCount = Object.values(completedMilestones).filter(Boolean).length;
-  const totalMilestones = Object.keys(completedMilestones).length;
-  const overallPercentage = Math.round((completedCount / totalMilestones) * 100);
-
-  // Custom high-quality daily training narrative builder for supervisor console
-  const getActivePhaseInfo = () => {
-    if (activeTab === 1) {
-      return STORY_PHASES[0]; // The Spark: Concept & Classification
-    } else if (activeTab === 2) {
-      return {
-        number: 2,
-        title: 'Module 2: Stent Concept-to-Product Story',
-        subtitle: 'The Clinical Odyssey of a Class D Combination Product',
-        narration: [
-          'Every medical device starts as an idea in a clinic. For ForgeFlow, that idea was: "How can we safely scaffold a stenosed coronary artery without inducing fatal clotting, thrombosis, or late-stage vessel scarring (restenosis)?"',
-          'In this module, you will step through the physical development of our stent, tracing its journey from physical Cobalt-Chromium scaffolding specifications, to chemical biodegradable PLGA polymers, and the slow elution of Sirolimus.',
-          'Additionally, you will engage with our product-specific CDSCO risk classifier to mathematically justify why this combination implant must adhere to Class D (Class III) safety boundaries.',
-          'Complete each slide and response within this case study to unlock downstream mechanical and biological verification boards.'
-        ],
-        learningObjectives: [
-          'Deconstruct a drug-device combination implant into its active constituent parts.',
-          'Correlate clinical pathology of plaque restenosis with material properties.',
-          'Mathematically justify Class D rating under Indian MDR 2017 criteria.'
-        ],
-        internAssignment: 'Step through the physical and chemical story boards. Complete the product classifier to finalize Phase 2 design transfer bounds.'
-      };
-    } else if (activeTab === 3) {
-      return STORY_PHASES[1]; // The Vessel: Biocompatibility Evaluation (ISO 10993)
-    } else if (activeTab === 4) {
-      return STORY_PHASES[2]; // The Forge: Design Controls & DHF (ISO 13485)
-    } else if (activeTab === 5) {
-      return STORY_PHASES[3]; // The Shield: Risk Analysis & FMEA (ISO 14971)
-    } else if (activeTab === 6) {
-      return {
-        number: 6,
-        title: 'Module 6: Transfer & Post-Market Surveillance',
-        subtitle: 'Process Validation (IQ/OQ/PQ) and Global Clinical Vigilance',
-        narration: [
-          'Designing a safe stent in a research laboratory is only half the battle. To scale up, we must transfer our specifications (DHF) into the cleanroom production plant (DMR) under rigorous Process Validation (IQ/OQ/PQ) parameters.',
-          'Once transferred, the device enters the global healthcare market, where our Active and Passive Post-Market Surveillance (PMS) loops act as our continuous patient safety net.',
-          'Here, you will complete equipment qualification runs for crimping and spraying, and investigate real-world clinical complaint scenarios to preserve our CDSCO manufacturing license.'
-        ],
-        learningObjectives: [
-          'Differentiate between IQ, OQ, and PQ process validation protocols.',
-          'Formulate risk mitigations for cleanroom ultrasonic spraying lines.',
-          'Analyze post-market adverse events and initiate corrective actions (CAPA/FSCA).'
-        ],
-        internAssignment: 'Perform process runs in the Transfer tab, then switch to the PMS sub-tab to resolve clinical customer complaint files.'
-      };
-    } else {
-      return STORY_PHASES[0];
+    if (activeChapter < CHAPTERS.length) {
+      setActiveChapter(activeChapter + 1);
     }
   };
 
-  const activePhaseInfo = getActivePhaseInfo();
-
-  const handleDownloadTemplate = (templateId: string) => {
-    const template = REGULATORY_TEMPLATES.find(t => t.id === templateId);
-    if (!template) return;
-
-    const blob = new Blob([template.content], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = template.fileName;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
+  const progressPercentage = Math.round((completedChapters.length / CHAPTERS.length) * 100);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans" id="app-container">
-      {/* Dynamic Navigation Header */}
-      <header className="bg-slate-900 text-white border-b border-slate-800 shrink-0 shadow-md" id="master-header">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-600 rounded-xl shadow-lg shadow-blue-500/20">
-              <Building size={24} className="text-white" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] bg-blue-500/20 text-blue-400 font-bold tracking-wider uppercase px-2 py-0.5 rounded-full border border-blue-500/30">
-                  Intern Training Portal
-                </span>
-                <span className="text-[10px] bg-red-500/20 text-red-400 font-bold uppercase px-2 py-0.5 rounded-full border border-red-500/30">
-                  Case Study: Class D DES
-                </span>
-              </div>
-              <h1 className="text-lg font-bold text-slate-100 mt-0.5 tracking-tight">
-                RAC Forge Private Limited • MedDev Academy
-              </h1>
-            </div>
-          </div>
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-800 flex flex-col">
+      {selectedWordInfo && (
+        <WordMeaningPopup 
+          term={selectedWordInfo.term}
+          context={selectedWordInfo.context}
+          position={selectedWordInfo.position}
+          onClose={() => setSelectedWordInfo(null)}
+        />
+      )}
+      {isNotesModalOpen && <NotesDownloadModal chapters={CHAPTERS} onClose={() => setIsNotesModalOpen(false)} />}
 
-          <div className="flex items-center gap-3 self-end md:self-auto">
+      {/* Top Header */}
+      <header className="bg-[#0f172a] text-white py-4 px-6 flex justify-between items-center shadow-md z-10 sticky top-0">
+        <div className="flex items-center gap-3">
+          <div className="bg-blue-600 p-2 rounded-lg">
+            <Building className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold tracking-tight">RAC Forger Private Limited</h1>
+            <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Internal Training Platform</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => setIsNotesModalOpen(true)}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors text-sm"
+          >
+            <Download className="w-4 h-4" />
+            <span className="hidden sm:inline">Download Notes</span>
+          </button>
+          <button className="p-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-full transition-colors relative">
+            <Bell className="w-5 h-5" />
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-[#0f172a]"></span>
+          </button>
+          <div className="flex items-center gap-3 pl-4 border-l border-slate-700">
             <div className="text-right hidden sm:block">
-              <span className="text-xs text-slate-400 block">Lead Consultant Supervisor</span>
-              <span className="text-xs font-semibold text-slate-200">Sankhyayan & Senior QA Directors</span>
+              <p className="text-sm font-medium">Sankhyayan</p>
+              <p className="text-xs text-slate-400">Senior QA Director</p>
             </div>
-            <button
-              onClick={handleResetProgress}
-              className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-2 px-3.5 rounded-xl border border-slate-700/60 transition-all flex items-center gap-1.5"
-            >
-              <RotateCcw size={13} /> Reset Training Log
-            </button>
+            <div className="w-9 h-9 bg-slate-700 rounded-full flex items-center justify-center border border-slate-600">
+              <User className="w-5 h-5 text-slate-300" />
+            </div>
           </div>
         </div>
       </header>
 
-      {/* Main Educational Dashboard Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:py-6 grid grid-cols-1 lg:grid-cols-12 gap-6" id="dashboard-layout">
-        {/* Left Side: Active Classroom Workspace - 8 Cols */}
-        <div className="lg:col-span-8 flex flex-col gap-6" id="classroom-workspace">
-          {/* Phase progression Tab Bar */}
-          <div className="bg-white p-2 rounded-2xl shadow-sm border border-slate-200 overflow-x-auto flex gap-1 scrollbar-none" id="lifecycle-tabs">
-            {[
-              { num: 1, name: 'M1: Indian MDR 2017' },
-              { num: 2, name: 'M2: Stent Story Case' },
-              { num: 3, name: 'M3: Biocompatibility' },
-              { num: 4, name: 'M4: Design Control Trace' },
-              { num: 5, name: 'M5: Hazard Risk Board' },
-              { num: 6, name: 'M6: Transfer & PMS' },
-            ].map((mod) => (
-              <button
-                key={mod.num}
-                onClick={() => setActiveTab(mod.num)}
-                className={`py-2 px-3 text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-all flex-shrink-0 ${
-                  activeTab === mod.num
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-100'
-                    : 'text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                <span className={`w-4 h-4 rounded-full text-[10px] flex items-center justify-center font-bold ${
-                  activeTab === mod.num ? 'bg-white text-blue-600' : 'bg-slate-200 text-slate-600'
-                }`}>
-                  {mod.num}
-                </span>
-                <span className="truncate max-w-[130px]">
-                  {mod.name}
-                </span>
-              </button>
-            ))}
-
-            {/* Extra tab: Templates Library */}
-            <button
-              onClick={() => setActiveTab(7)}
-              className={`py-2 px-4 text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-all flex-shrink-0 ${
-                activeTab === 7
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-100'
-                  : 'text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              <FileText size={14} />
-              <span>DMR Templates</span>
-            </button>
+      {/* Main Layout */}
+      <div className="flex-1 flex flex-col lg:flex-row relative">
+        
+        {/* Left Column: Sidebar */}
+        <aside className="group fixed lg:sticky top-[76px] left-0 h-[calc(100vh-76px)] z-40 bg-white border-r border-slate-200 transition-all duration-300 ease-in-out w-16 hover:w-80 overflow-hidden flex flex-col shadow-lg">
+          <div className="p-4 flex items-center gap-3 border-b border-slate-100 w-80">
+            <Menu className="w-6 h-6 text-slate-500 shrink-0" />
+            <h2 className="text-sm font-bold text-slate-600 uppercase tracking-wider whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300">Course Curriculum</h2>
           </div>
-
-          {/* Active Tab Workspace Panel */}
-          <div className="flex-1" id="tab-content-panel">
-            {activeTab === 1 && (
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 text-slate-700 space-y-8" id="phase-concept">
-                <div className="flex justify-between items-start flex-wrap gap-4">
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <span className="p-1.5 bg-indigo-50 text-indigo-600 rounded-xl shrink-0">
-                      <Sparkles size={20} />
+          
+          <div className="p-4 overflow-y-auto flex-1 w-80 custom-scrollbar opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-100">
+            <nav className="space-y-2">
+              {CHAPTERS.map((chapter) => {
+                const isCompleted = completedChapters.includes(chapter.id);
+                const isActive = activeChapter === chapter.id;
+                
+                return (
+                  <button
+                    key={chapter.id}
+                    onClick={() => setActiveChapter(chapter.id)}
+                    className={`w-full flex items-start gap-3 p-3 rounded-xl transition-all text-left ${
+                      isActive 
+                        ? 'bg-blue-900 border border-blue-800 shadow-sm' 
+                        : 'hover:bg-slate-50 border border-transparent'
+                    }`}
+                  >
+                    <div className="mt-0.5 flex-shrink-0">
+                      {isCompleted ? (
+                        <CheckCircle2 className="w-5 h-5 text-green-500" />
+                      ) : isActive ? (
+                        <Circle className="w-5 h-5 text-white fill-blue-900" />
+                      ) : (
+                        <Circle className="w-5 h-5 text-slate-300" />
+                      )}
+                    </div>
+                    <span className={`text-sm font-medium leading-tight ${isActive ? 'text-white' : 'text-slate-600'}`}>
+                      {chapter.title}
                     </span>
-                    <div className="min-w-0">
-                      <h2 className="text-xl font-bold text-slate-800 truncate">Module 1: Indian MDR 2017 Classifier Tool</h2>
-                      <p className="text-xs text-slate-500 truncate">Master CDSCO drug and device risk pathways using the official rules-based classifier.</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => {
-                      handleCompleteMilestone('concept');
-                    }}
-                    className={`text-xs py-2 px-4 rounded-xl font-semibold transition-all ${
-                      completedMilestones.concept
-                        ? 'bg-green-50 text-green-700 border border-green-200 cursor-default'
-                        : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm shadow-indigo-100'
-                    }`}
-                  >
-                    {completedMilestones.concept ? '✓ Module 1 Completed' : 'Mark Module 1 as Done'}
                   </button>
-                </div>
-
-                {/* Interactive MDR Classifier widget */}
-                <IndianMDRClassifier onClassificationCompleted={() => handleCompleteMilestone('concept')} />
-              </div>
-            )}
-
-            {activeTab === 2 && (
-              <ForgeFlowStentStory onStoryCompleted={() => handleCompleteMilestone('biocompatibility')} />
-            )}
-
-            {activeTab === 3 && (
-              <BiocompatibilityEvaluator onTaskCompleted={handleCompleteMilestone} />
-            )}
-
-            {activeTab === 4 && (
-              <DesignControlsTracer onTaskCompleted={handleCompleteMilestone} />
-            )}
-
-            {activeTab === 5 && (
-              <RiskManagementBoard onTaskCompleted={handleCompleteMilestone} />
-            )}
-
-            {activeTab === 6 && (
-              <div className="space-y-4">
-                {/* Local sub-tabs selector */}
-                <div className="bg-white p-2 rounded-2xl shadow-sm border border-slate-200 flex gap-2">
-                  <button
-                    onClick={() => setPmsActiveSubTab('transfer')}
-                    className={`flex-1 py-2 text-xs font-semibold rounded-xl transition-all ${
-                      pmsActiveSubTab === 'transfer'
-                        ? 'bg-slate-900 text-white'
-                        : 'text-slate-600 hover:bg-slate-50'
-                    }`}
-                  >
-                    🏭 1. Design Transfer (IQ/OQ/PQ)
-                  </button>
-                  <button
-                    onClick={() => setPmsActiveSubTab('pms')}
-                    className={`flex-1 py-2 text-xs font-semibold rounded-xl transition-all ${
-                      pmsActiveSubTab === 'pms'
-                        ? 'bg-slate-900 text-white'
-                        : 'text-slate-600 hover:bg-slate-50'
-                    }`}
-                  >
-                    🛡️ 2. Post-Market Surveillance (PMS)
-                  </button>
-                </div>
-                <DesignTransferAndPMS activeSubTab={pmsActiveSubTab} onTaskCompleted={handleCompleteMilestone} />
-              </div>
-            )}
-
-            {activeTab === 7 && (
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6" id="templates-library">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h2 className="text-xl font-bold text-slate-800">DMR & RAC Consult Templates Library</h2>
-                    <p className="text-xs text-slate-500">Download compliant Markdown and CSV templates formatted specifically for Class D devices.</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {REGULATORY_TEMPLATES.map((tpl) => (
-                    <div key={tpl.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-200/60 hover:border-slate-300 transition-colors text-xs flex flex-col justify-between">
-                      <div className="space-y-1.5 mb-4">
-                        <div className="flex justify-between items-center">
-                          <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 font-bold font-mono text-[9px] rounded uppercase">{tpl.fileType}</span>
-                          <span className="text-[10px] text-slate-400 font-mono">{tpl.fileName}</span>
-                        </div>
-                        <h4 className="font-bold text-slate-800 text-sm leading-snug">{tpl.name}</h4>
-                        <p className="text-slate-500 text-[11px] leading-relaxed">{tpl.description}</p>
-                      </div>
-                      <button
-                        onClick={() => handleDownloadTemplate(tpl.id)}
-                        className="w-full text-xs bg-slate-800 hover:bg-slate-900 text-white rounded-xl py-2 font-semibold flex justify-center items-center gap-1.5 transition-colors mt-auto"
-                      >
-                        <Download size={14} /> Download {tpl.fileType === 'csv' ? 'Spreadsheet (CSV)' : 'Doc Template (MD)'}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+                );
+              })}
+            </nav>
+            
+            {/* Dashboard / Other Nav items placeholder */}
+            <div className="mt-10 pt-6 border-t border-slate-100">
+               <h2 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Quick Links</h2>
+               <div className="space-y-1">
+                 {['Dashboard', 'My Regulatory Courses', 'Forging Safety SOPs', 'Certification Vault', 'Audit Reports'].map(link => (
+                   <a key={link} href="#" className="block py-2 px-3 text-sm text-slate-600 hover:bg-slate-50 hover:text-[#0f172a] rounded-lg transition-colors">
+                     {link}
+                   </a>
+                 ))}
+               </div>
+            </div>
           </div>
-        </div>
+        </aside>
 
-        {/* Right Side: Academy Supervisor Coach & Progress - 4 Cols */}
-        <div className="lg:col-span-4 space-y-6 flex flex-col" id="academy-sidebar">
-          {/* Progress Ring / Dashboard Widget */}
-          {isScoreVisible ? (
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 text-center relative" id="academy-progress">
-              <button
-                onClick={() => setIsScoreVisible(false)}
-                className="absolute top-4 right-4 text-xs font-medium text-slate-500 hover:text-blue-600 transition-colors px-2 py-1 bg-slate-50 hover:bg-blue-50 rounded"
-              >
-                Hide Score
-              </button>
-              <div className="flex items-center gap-1.5 mb-4 text-left">
-                <span className="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
-                  <Users size={16} />
-                </span>
-                <h3 className="font-bold text-slate-800 text-xs uppercase tracking-wider">RAC Forge Academy Score</h3>
+        {/* Right Column: Main Content */}
+        <main className="w-full lg:flex-1 p-6 lg:p-10 lg:pl-24 transition-all duration-300">
+          <div className="max-w-5xl mx-auto">
+            
+            {/* Breadcrumb & Progress */}
+            <div className="mb-8">
+              <div className="flex items-center gap-2 text-sm text-slate-500 mb-4">
+                <a href="#" className="hover:text-[#0f172a]">Courses</a>
+                <ChevronRight className="w-4 h-4" />
+                <a href="#" className="hover:text-[#0f172a]">ISO 13485 Internal Auditor</a>
+                <ChevronRight className="w-4 h-4" />
+                <span className="text-[#0f172a] font-medium">{CHAPTERS.find(c => c.id === activeChapter)?.title}</span>
               </div>
-
-              <div className="relative inline-flex items-center justify-center mb-3">
-                <svg className="w-24 h-24 transform -rotate-90">
-                  {/* Background Ring */}
-                  <circle
-                    cx="48"
-                    cy="48"
-                    r="38"
-                    strokeWidth="8"
-                    stroke="#f1f5f9"
-                    fill="transparent"
-                  />
-                  {/* Foreground Progress */}
-                  <circle
-                    cx="48"
-                    cy="48"
-                    r="38"
-                    strokeWidth="8"
-                    stroke="#2563eb"
-                    fill="transparent"
-                    strokeDasharray={2 * Math.PI * 38}
-                    strokeDashoffset={2 * Math.PI * 38 * (1 - overallPercentage / 100)}
-                    className="transition-all duration-500"
-                  />
-                </svg>
-                <span className="absolute text-xl font-black text-slate-800 font-mono">
-                  {overallPercentage}%
-                </span>
-              </div>
-
-              <span className="text-xs font-bold text-slate-700 block mb-1">
-                Class D Onboarding Training Project
-              </span>
-              <p className="text-[10px] text-slate-400 mb-4">
-                Complete each active step's requirements to prove standard compliance.
-              </p>
-
-              {/* Checklist of steps */}
-              <div className="space-y-2 text-left border-t border-slate-100 pt-4">
-                {Object.entries(completedMilestones).map(([key, isDone]) => {
-                  let label = '';
-                  if (key === 'concept') label = 'M1. Indian MDR 2017 Classifier';
-                  else if (key === 'biocompatibility') label = 'M2. Stent Story Completed';
-                  else if (key === 'design_files') label = 'M3. Biocompatibility Mapped';
-                  else if (key === 'risk') label = 'M4. Design Controls Trace';
-                  else if (key === 'design_transfer') label = 'M5. FMEA Hazards Mitigated';
-                  else if (key === 'pms') label = 'M6. Transfer & PMS Released';
-
-                  return (
-                    <div key={key} className="flex items-center justify-between text-xs">
-                      <span className={isDone ? 'text-slate-400 line-through' : 'text-slate-600 font-medium'}>
-                        {label}
-                      </span>
-                      <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center text-[8px] font-bold ${
-                        isDone ? 'bg-green-100 border-green-300 text-green-700' : 'bg-slate-50 border-slate-200 text-transparent'
-                      }`}>
-                        ✓
-                      </span>
-                    </div>
-                  );
-                })}
+              
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between gap-6">
+                 <div className="flex-1">
+                   <div className="flex justify-between items-center mb-2">
+                     <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Course Progress</span>
+                     <span className="text-sm font-bold text-[#0f172a]">{progressPercentage}%</span>
+                   </div>
+                   <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                     <div 
+                       className="bg-[#0f172a] h-full rounded-full transition-all duration-500 ease-out"
+                       style={{ width: `${progressPercentage}%` }}
+                     ></div>
+                   </div>
+                 </div>
+                 <div className="hidden sm:block text-right">
+                    <p className="text-sm text-slate-500">Modules Completed</p>
+                    <p className="text-lg font-bold text-[#0f172a]">{completedChapters.length} / {CHAPTERS.length}</p>
+                 </div>
               </div>
             </div>
-          ) : (
-            <button
-              onClick={() => setIsScoreVisible(true)}
-              className="w-full bg-white p-4 rounded-2xl shadow-sm border border-slate-200 text-center text-sm font-medium text-slate-600 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50 transition-all flex items-center justify-center gap-2"
-            >
-              <Award size={18} />
-              Show Academy Score
-            </button>
-          )}
 
-          {/* Supervisor's Guided Narration / The Story Thread */}
-          {isConsoleVisible ? (
-            <div className="bg-slate-900 text-slate-100 p-5 rounded-2xl shadow-md flex-1 flex flex-col justify-between relative" id="narrator-console">
-              <button
-                onClick={() => setIsConsoleVisible(false)}
-                className="absolute top-4 right-4 text-xs font-medium text-slate-400 hover:text-white transition-colors px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded"
-              >
-                Hide Console
-              </button>
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-ping"></div>
-                  <span className="text-[10px] font-bold font-mono tracking-wider text-slate-400 uppercase">
-                    Supervisor Story Console
-                  </span>
+            {/* Content Area */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-8">
+              {/* Text Content */}
+              <div className="p-8 lg:p-12" ref={contentRef}>
+                
+                <div className="flex items-center gap-4 mb-6">
+                  <h1 className="text-3xl font-bold text-[#0f172a] m-0">
+                    {CHAPTERS.find(c => c.id === activeChapter)?.title}
+                  </h1>
+                  <button
+                    onClick={handleSpeakSummary}
+                    disabled={isSummarizing}
+                    className="flex items-center justify-center p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-blue-600 transition-colors shrink-0"
+                    title={isSpeaking ? "Stop Summary" : "Listen to Chapter Summary (Hinglish)"}
+                  >
+                    {isSummarizing ? (
+                      <Loader2 className="w-6 h-6 animate-spin" />
+                    ) : isSpeaking ? (
+                      <VolumeX className="w-6 h-6 text-red-500" />
+                    ) : (
+                      <Volume2 className="w-6 h-6" />
+                    )}
+                  </button>
                 </div>
 
-                <div className="space-y-1.5">
-                  <span className="text-[10px] text-blue-400 font-bold block uppercase">{activePhaseInfo.subtitle}</span>
-                  <h4 className="font-extrabold text-sm leading-tight text-white">{activePhaseInfo.title}</h4>
-                </div>
-
-                {/* Dynamic scrollable text segment */}
-                <div className="space-y-3 max-h-72 overflow-y-auto pr-1 text-[11px] leading-relaxed text-slate-300 scrollbar-thin">
-                  {activePhaseInfo.narration.map((p, pIdx) => (
-                    <p key={pIdx}>{p}</p>
-                  ))}
-                </div>
-              </div>
-
-              {/* Objectives Footer */}
-              <div className="mt-5 pt-4 border-t border-slate-800 space-y-3 bg-slate-900">
-                <div>
-                  <span className="text-[9px] font-bold text-blue-400 uppercase tracking-wide block mb-1">Learning Outcomes</span>
-                  <ul className="text-[10px] text-slate-400 space-y-1 pl-2 list-disc">
-                    {activePhaseInfo.learningObjectives.map((obj, oIdx) => (
-                      <li key={oIdx}>{obj}</li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div className="bg-slate-800/60 p-2.5 rounded-xl border border-slate-700/50 text-[10px]">
-                  <strong className="text-white font-semibold">Active Assignment:</strong>{' '}
-                  <span className="text-slate-300">{activePhaseInfo.internAssignment}</span>
-                </div>
+                
+                {(() => {
+                  const ActiveChapter = ChapterComponents[activeChapter];
+                  return ActiveChapter ? <div className="prose prose-slate prose-lg max-w-none prose-headings:font-bold prose-h3:text-xl prose-a:text-blue-600 prose-img:rounded-xl"><ActiveChapter /></div> : <div className="prose prose-slate max-w-none prose-headings:text-[#0f172a] prose-a:text-blue-600"><p className="text-lg text-slate-600 leading-relaxed mb-6">Content for this chapter is coming soon.</p></div>;
+                })()}
               </div>
             </div>
-          ) : (
-            <button
-              onClick={() => setIsConsoleVisible(true)}
-              className="w-full bg-slate-900 p-4 rounded-2xl shadow-md border border-slate-800 text-center text-sm font-medium text-slate-300 hover:text-white hover:border-slate-600 hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
-            >
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-ping"></div>
-              Show Supervisor Console
-            </button>
-          )}
-        </div>
-      </main>
 
-      {/* Footer */}
-      <footer className="bg-white border-t border-slate-200 py-3 text-center text-slate-400 text-[10px] shrink-0 relative">
-        © 2026 RAC Forge Private Limited. Developed for internal regulatory training, design control education, and biocompatibility safety audits.
-      </footer>
+            {/* Action Buttons */}
+            <div className="flex justify-between items-center pt-4">
+              <button className="text-slate-500 font-medium hover:text-[#0f172a] transition-colors">
+                Previous Chapter
+              </button>
+              <button 
+                onClick={handleMarkComplete}
+                className="bg-[#0f172a] hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-xl shadow-md transition-all flex items-center gap-2"
+              >
+                {activeChapter === CHAPTERS.length ? 'Finish Course' : 'Mark Chapter as Complete & Next'}
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
 
-      {/* Loading Indicator for AI Definitions */}
-      {isLoadingTerm && (
-        <div className="fixed bottom-6 right-6 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-3 border border-slate-700 animate-pulse z-50">
-          <Activity size={18} className="text-indigo-400 animate-spin" />
-          <span className="text-sm font-medium">Analyzing term...</span>
-        </div>
-      )}
-
-      {(globalHelpTerm || dynamicTermData) && (
-        <RegulatoryTermsPopup
-          termId={globalHelpTerm || undefined}
-          termData={dynamicTermData}
-          onClose={() => {
-            setGlobalHelpTerm(null);
-            setDynamicTermData(null);
-          }}
-        />
-      )}
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

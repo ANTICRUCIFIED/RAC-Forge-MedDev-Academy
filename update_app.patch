@@ -1,0 +1,223 @@
+--- src/App.tsx
++++ src/App.tsx
+@@ -1,4 +1,4 @@
+-import { useState } from 'react';
++import { useState, useEffect, useRef } from 'react';
+ import { 
+   Bell, 
+   User, 
+@@ -8,10 +8,11 @@
+   ChevronRight, 
+-  PlayCircle,
+   AlertTriangle,
+   FileText,
+-  Building
++  Building,
++  Download,
++  Menu
+ } from 'lucide-react';
+ import Chapter1 from './components/Chapter1';
+@@ -40,6 +41,8 @@
+ import Chapter29 from './components/Chapter29';
+ import Chapter30 from './components/Chapter30';
++import WordMeaningPopup from './components/WordMeaningPopup';
++import NotesDownloadModal from './components/NotesDownloadModal';
+ 
+ const CHAPTERS = [
+@@ -77,6 +80,31 @@
+ export default function App() {
+   const [activeChapter, setActiveChapter] = useState(1);
+   const [completedChapters, setCompletedChapters] = useState<number[]>([]);
++  const [isNotesModalOpen, setIsNotesModalOpen] = useState(false);
++  const [selectedWordInfo, setSelectedWordInfo] = useState<{term: string, context: string, position: {x: number, y: number}} | null>(null);
++  
++  const contentRef = useRef<HTMLDivElement>(null);
++
++  useEffect(() => {
++    const handleMouseUp = (e: MouseEvent) => {
++      const selection = window.getSelection();
++      if (selection && selection.toString().trim().length > 0 && selection.toString().trim().length < 50) {
++        const term = selection.toString().trim();
++        const range = selection.getRangeAt(0);
++        const rect = range.getBoundingClientRect();
++        const context = range.startContainer.parentElement?.textContent || "";
++        
++        setSelectedWordInfo({
++          term,
++          context,
++          position: { x: rect.left, y: rect.bottom }
++        });
++      }
++    };
++
++    document.addEventListener('mouseup', handleMouseUp);
++    return () => document.removeEventListener('mouseup', handleMouseUp);
++  }, []);
+ 
+   const handleMarkComplete = () => {
+@@ -91,6 +119,16 @@
+ 
+   return (
+     <div className="min-h-screen bg-slate-50 font-sans text-slate-800 flex flex-col">
++      {selectedWordInfo && (
++        <WordMeaningPopup 
++          term={selectedWordInfo.term}
++          context={selectedWordInfo.context}
++          position={selectedWordInfo.position}
++          onClose={() => setSelectedWordInfo(null)}
++        />
++      )}
++      {isNotesModalOpen && <NotesDownloadModal chapters={CHAPTERS} onClose={() => setIsNotesModalOpen(false)} />}
++      
+       {/* Top Header */}
+       <header className="bg-[#0f172a] text-white py-4 px-6 flex justify-between items-center shadow-md z-10 sticky top-0">
+@@ -103,6 +141,12 @@
+           </div>
+         </div>
+         <div className="flex items-center gap-4">
++          <button 
++            onClick={() => setIsNotesModalOpen(true)}
++            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors text-sm"
++          >
++            <Download className="w-4 h-4" />
++            <span className="hidden sm:inline">Download Notes</span>
++          </button>
+           <button className="p-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-full transition-colors relative">
+             <Bell className="w-5 h-5" />
+@@ -120,62 +164,72 @@
+ 
+       {/* Main Layout */}
+-      <div className="flex-1 max-w-[1600px] w-full mx-auto flex flex-col lg:flex-row">
++      <div className="flex-1 flex flex-col lg:flex-row relative">
+         
+         {/* Left Column: Sidebar */}
+-        <aside className="w-full lg:w-1/4 bg-white border-r border-slate-200 lg:min-h-[calc(100vh-76px)]">
+-          <div className="p-6 sticky top-[76px]">
+-            <h2 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Course Curriculum</h2>
+-            <nav className="space-y-2">
+-              {CHAPTERS.map((chapter) => {
+-                const isCompleted = completedChapters.includes(chapter.id);
+-                const isActive = activeChapter === chapter.id;
+-                
+-                return (
+-                  <button
+-                    key={chapter.id}
+-                    onClick={() => setActiveChapter(chapter.id)}
+-                    className={`w-full flex items-start gap-3 p-3 rounded-xl transition-all text-left ${
+-                      isActive 
+-                        ? 'bg-blue-50 border border-blue-200 shadow-sm' 
+-                        : 'hover:bg-slate-50 border border-transparent'
+-                    }`}
+-                  >
+-                    <div className="mt-0.5 flex-shrink-0">
+-                      {isCompleted ? (
+-                        <CheckCircle2 className="w-5 h-5 text-green-500" />
+-                      ) : isActive ? (
+-                        <Circle className="w-5 h-5 text-blue-500 fill-blue-50" />
+-                      ) : (
+-                        <Circle className="w-5 h-5 text-slate-300" />
+-                      )}
+-                    </div>
+-                    <span className={`text-sm font-medium leading-tight ${isActive ? 'text-blue-900' : 'text-slate-600'}`}>
+-                      {chapter.title}
+-                    </span>
+-                  </button>
+-                );
+-              })}
+-            </nav>
+-            
+-            {/* Dashboard / Other Nav items placeholder */}
+-            <div className="mt-10 pt-6 border-t border-slate-100">
+-               <h2 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Quick Links</h2>
+-               <div className="space-y-1">
+-                 {['Dashboard', 'My Regulatory Courses', 'Forging Safety SOPs', 'Certification Vault', 'Audit Reports'].map(link => (
+-                   <a key={link} href="#" className="block py-2 px-3 text-sm text-slate-600 hover:bg-slate-50 hover:text-[#0f172a] rounded-lg transition-colors">
+-                     {link}
+-                   </a>
+-                 ))}
+-               </div>
+-            </div>
+-          </div>
++        <aside className="group fixed lg:sticky top-[76px] left-0 h-[calc(100vh-76px)] z-40 bg-white border-r border-slate-200 transition-all duration-300 ease-in-out w-16 hover:w-80 overflow-hidden flex flex-col shadow-lg">
++          <div className="p-4 flex items-center gap-3 border-b border-slate-100 w-80">
++            <Menu className="w-6 h-6 text-slate-500 shrink-0" />
++            <h2 className="text-sm font-bold text-slate-600 uppercase tracking-wider whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300">Course Curriculum</h2>
++          </div>
++          
++          <div className="p-4 overflow-y-auto flex-1 w-80 custom-scrollbar opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-100">
++             <nav className="space-y-2">
++               {CHAPTERS.map((chapter) => {
++                 const isCompleted = completedChapters.includes(chapter.id);
++                 const isActive = activeChapter === chapter.id;
++                 
++                 return (
++                   <button
++                     key={chapter.id}
++                     onClick={() => setActiveChapter(chapter.id)}
++                     className={`w-full flex items-start gap-3 p-3 rounded-xl transition-all text-left ${
++                       isActive 
++                         ? 'bg-blue-50 border border-blue-200 shadow-sm' 
++                         : 'hover:bg-slate-50 border border-transparent'
++                     }`}
++                   >
++                     <div className="mt-0.5 flex-shrink-0">
++                       {isCompleted ? (
++                         <CheckCircle2 className="w-5 h-5 text-green-500" />
++                       ) : isActive ? (
++                         <Circle className="w-5 h-5 text-blue-500 fill-blue-50" />
++                       ) : (
++                         <Circle className="w-5 h-5 text-slate-300" />
++                       )}
++                     </div>
++                     <span className={`text-sm font-medium leading-tight ${isActive ? 'text-blue-900' : 'text-slate-600'}`}>
++                       {chapter.title}
++                     </span>
++                   </button>
++                 );
++               })}
++             </nav>
++             
++             {/* Dashboard / Other Nav items placeholder */}
++             <div className="mt-10 pt-6 border-t border-slate-100">
++                <h2 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Quick Links</h2>
++                <div className="space-y-1">
++                  {['Dashboard', 'My Regulatory Courses', 'Forging Safety SOPs', 'Certification Vault', 'Audit Reports'].map(link => (
++                    <a key={link} href="#" className="block py-2 px-3 text-sm text-slate-600 hover:bg-slate-50 hover:text-[#0f172a] rounded-lg transition-colors">
++                      {link}
++                    </a>
++                  ))}
++                </div>
++             </div>
++          </div>
+         </aside>
+ 
+         {/* Right Column: Main Content */}
+-        <main className="w-full lg:w-3/4 p-6 lg:p-10">
+-          <div className="max-w-4xl mx-auto">
++        <main className="w-full lg:flex-1 p-6 lg:p-10 lg:pl-24 transition-all duration-300">
++          <div className="max-w-5xl mx-auto">
+             
+             {/* Breadcrumb & Progress */}
+@@ -207,22 +261,9 @@
+ 
+             {/* Content Area */}
+             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-8">
+-              {/* Video Placeholder */}
+-              <div className="aspect-video bg-slate-900 relative flex items-center justify-center group cursor-pointer">
+-                <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors"></div>
+-                <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center z-10 group-hover:scale-110 transition-transform">
+-                  <PlayCircle className="w-10 h-10 text-white" />
+-                </div>
+-                <div className="absolute bottom-4 left-4 text-white z-10">
+-                  <span className="bg-black/60 px-2 py-1 rounded text-xs font-medium backdrop-blur-md">
+-                    Technical Document Reader
+-                  </span>
+-                </div>
+-              </div>
+-
+               {/* Text Content */}
+-              <div className="p-8 lg:p-12">
++              <div className="p-8 lg:p-12" ref={contentRef}>
+                 <h1 className="text-3xl font-bold text-[#0f172a] mb-6">
+                   {CHAPTERS.find(c => c.id === activeChapter)?.title}
+                 </h1>
