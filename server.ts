@@ -3,6 +3,10 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 
+async function getModels(ai: any) {
+  return ["gemini-3.5-flash", "gemini-3.1-pro-preview"];
+}
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -31,30 +35,7 @@ ${context ? `Context: "${context}"` : ''}
 
 Respond ONLY in valid JSON. Do not include markdown code block formatting (like \`\`\`json) or any other text.`;
 
-      
-      
-      let textModels = [];
-      try {
-        const modelsList = await ai.models.list();
-        for await (const m of modelsList) {
-          if (m.name.includes("gemini") && !m.name.includes("tts") && !m.name.includes("image") && !m.name.includes("audio") && !m.name.includes("omni") && !m.name.includes("embedding") && !m.name.includes("live") && !m.name.includes("robotics") && !m.name.includes("computer-use")) {
-            textModels.push(m.name.replace("models/", ""));
-          }
-        }
-        textModels.sort((a, b) => {
-          const aMatch = a.match(/gemini-(\d+\.\d+|\d+)/);
-          const bMatch = b.match(/gemini-(\d+\.\d+|\d+)/);
-          const aVer = aMatch ? parseFloat(aMatch[1]) : 0;
-          const bVer = bMatch ? parseFloat(bMatch[1]) : 0;
-          if (aVer !== bVer) return bVer - aVer;
-          const aRank = (a.includes("pro") ? 2 : (a.includes("flash") && !a.includes("lite") ? 1 : 0));
-          const bRank = (b.includes("pro") ? 2 : (b.includes("flash") && !b.includes("lite") ? 1 : 0));
-          return bRank - aRank;
-        });
-      } catch (err) {
-        console.error("Model list fetch failed", err);
-        textModels = ["gemini-3.5-flash", "gemini-3.1-pro-preview", "gemini-2.5-flash", "gemini-2.0-flash"];
-      }
+      const textModels = await getModels(ai);
 
       
       let response;
@@ -129,30 +110,7 @@ Respond ONLY in valid JSON. Do not include markdown code block formatting (like 
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       const prompt = `Act as an expert lecturer or trainer. Deliver a short, engaging lecture (about 4-6 sentences) based on the following chapter notes. Do NOT just read the text. Instead, explain the core concepts naturally in Hinglish (a conversational mix of Hindi and English). Use English for complex technical or regulatory terms, and Hindi for the conversational and explanatory parts. Speak directly to the learner as if you are training them in a classroom. Keep it concise so it can be easily spoken out loud. Content: "${text.substring(0, 5000)}"`;
       
-      
-      
-      let textModels = [];
-      try {
-        const modelsList = await ai.models.list();
-        for await (const m of modelsList) {
-          if (m.name.includes("gemini") && !m.name.includes("tts") && !m.name.includes("image") && !m.name.includes("audio") && !m.name.includes("omni") && !m.name.includes("embedding") && !m.name.includes("live") && !m.name.includes("robotics") && !m.name.includes("computer-use")) {
-            textModels.push(m.name.replace("models/", ""));
-          }
-        }
-        textModels.sort((a, b) => {
-          const aMatch = a.match(/gemini-(\d+\.\d+|\d+)/);
-          const bMatch = b.match(/gemini-(\d+\.\d+|\d+)/);
-          const aVer = aMatch ? parseFloat(aMatch[1]) : 0;
-          const bVer = bMatch ? parseFloat(bMatch[1]) : 0;
-          if (aVer !== bVer) return bVer - aVer;
-          const aRank = (a.includes("pro") ? 2 : (a.includes("flash") && !a.includes("lite") ? 1 : 0));
-          const bRank = (b.includes("pro") ? 2 : (b.includes("flash") && !b.includes("lite") ? 1 : 0));
-          return bRank - aRank;
-        });
-      } catch (err) {
-        console.error("Model list fetch failed", err);
-        textModels = ["gemini-3.5-flash", "gemini-3.1-pro-preview", "gemini-2.5-flash", "gemini-2.0-flash"];
-      }
+      const textModels = await getModels(ai);
 
       
       let response;
