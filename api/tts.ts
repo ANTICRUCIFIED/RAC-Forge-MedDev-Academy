@@ -17,6 +17,13 @@ export default async function handler(req: Request) {
       return new Response(JSON.stringify({ error: 'Text is required' }), { status: 400 });
     }
 
+    
+    if (!process.env.GEMINI_API_KEY) {
+      return new Response(JSON.stringify({ error: 'GEMINI_API_KEY is not configured in Vercel Environment Variables' }), { 
+        status: 500, 
+        headers: { 'Content-Type': 'application/json' } 
+      });
+    }
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     
     const response = await ai.models.generateContent({

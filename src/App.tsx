@@ -87,7 +87,11 @@ export default function App() {
         body: JSON.stringify({ text: textContent })
       });
       
-      if (!response.ok) throw new Error("Failed to get summary");
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error("Summarize API Error:", errText);
+        throw new Error("Failed to get summary: " + errText);
+      }
       
       const data = await response.json();
       const summaryText = data.summary;
