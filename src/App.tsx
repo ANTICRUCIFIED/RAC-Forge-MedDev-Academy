@@ -64,7 +64,7 @@ export default function App() {
   const [chapterAudio, setChapterAudio] = useState<Record<number, Float32Array>>({});
   const [isPreFetching, setIsPreFetching] = useState<Record<number, 'idle' | 'loading' | 'ready' | 'error'>>({});
   
-  const preFetchPromises = useRef<Record<number, Promise<Float32Array>>>({});
+  const preFetchPromises = useRef<Record<number, Promise<{ summary: string; audio?: Float32Array }>>>({});
 
   // Stop speaking when component unmounts or chapter changes
   useEffect(() => {
@@ -108,10 +108,10 @@ export default function App() {
   };
 
   // Ensures high-quality text & TTS audio are generated and cached for the target chapter
-  const ensureAudioForChapter = async (chapterId: number): Promise<Float32Array> => {
+  const ensureAudioForChapter = async (chapterId: number): Promise<{ summary: string; audio?: Float32Array }> => {
     // If already cached, return immediately
     if (chapterAudio[chapterId]) {
-      return chapterAudio[chapterId];
+      return { summary: chapterSummaries[chapterId] || "", audio: chapterAudio[chapterId] };
     }
 
     // If already prefetching, return the existing promise
@@ -165,40 +165,46 @@ export default function App() {
         }
 
         // Step 2: Ensure we generate the high-quality natural TTS audio
-        const ttsResponse = await fetch('/api/tts', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: summaryText })
-        });
+        try {
+          const ttsResponse = await fetch('/api/tts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: summaryText })
+          });
 
-        if (!ttsResponse.ok) {
-          let errorMsg = "TTS API failed";
-          try {
-            const errData = await ttsResponse.json();
-            if (errData.error) {
-              errorMsg = `TTS API failed: ${errData.error}`;
-              if (errData.details) errorMsg += ` (${errData.details})`;
-            }
-          } catch (e) {
+          if (!ttsResponse.ok) {
+            let errorMsg = "TTS API failed";
             try {
-              const textErr = await ttsResponse.text();
-              if (textErr) errorMsg = `TTS API failed: ${textErr.substring(0, 200)}`;
-            } catch (e2) {}
+              const errData = await ttsResponse.json();
+              if (errData.error) {
+                errorMsg = `TTS API failed: ${errData.error}`;
+                if (errData.details) errorMsg += ` (${errData.details})`;
+              }
+            } catch (e) {
+              try {
+                const textErr = await ttsResponse.text();
+                if (textErr) errorMsg = `TTS API failed: ${textErr.substring(0, 200)}`;
+              } catch (e2) {}
+            }
+            throw new Error(errorMsg);
           }
-          throw new Error(errorMsg);
+
+          const ttsData = await ttsResponse.json();
+          if (!ttsData.audio) {
+            throw new Error("No audio returned from TTS API");
+          }
+
+          const float32PCM = decodeBase64ToFloat32PCM(ttsData.audio);
+
+          // Cache the result
+          setChapterAudio(prev => ({ ...prev, [chapterId]: float32PCM }));
+          setIsPreFetching(prev => ({ ...prev, [chapterId]: 'ready' }));
+          return { summary: summaryText, audio: float32PCM };
+        } catch (ttsErr: any) {
+          console.warn(`High-quality TTS generation failed for chapter ${chapterId}, using native fallback:`, ttsErr);
+          setIsPreFetching(prev => ({ ...prev, [chapterId]: 'ready' }));
+          return { summary: summaryText };
         }
-
-        const ttsData = await ttsResponse.json();
-        if (!ttsData.audio) {
-          throw new Error("No audio returned from TTS API");
-        }
-
-        const float32PCM = decodeBase64ToFloat32PCM(ttsData.audio);
-
-        // Cache the result
-        setChapterAudio(prev => ({ ...prev, [chapterId]: float32PCM }));
-        setIsPreFetching(prev => ({ ...prev, [chapterId]: 'ready' }));
-        return float32PCM;
       } catch (err) {
         console.warn(`ensureAudioForChapter failed for chapter ${chapterId}:`, err);
         setIsPreFetching(prev => ({ ...prev, [chapterId]: 'error' }));
@@ -303,9 +309,14 @@ export default function App() {
     // Otherwise wait for the active fetch promise or trigger a new one
     setIsSummarizing(true);
     try {
-      const pcmData = await ensureAudioForChapter(activeChapter);
+      const result = await ensureAudioForChapter(activeChapter);
       setIsSummarizing(false);
-      await playFloat32Audio(pcmData);
+      if (result.audio) {
+        await playFloat32Audio(result.audio);
+      } else {
+        console.warn("High-quality TTS was unavailable, using native synthesis with summary.");
+        speakNativeInstantly(result.summary);
+      }
     } catch (err: any) {
       console.error("High-quality TTS failed, falling back to native TTS:", err);
       setIsSummarizing(false);

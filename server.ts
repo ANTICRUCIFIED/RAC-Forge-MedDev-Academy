@@ -3,12 +3,84 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 
-async function getModels(ai: any) {
+async function getModels(ai: any): Promise<string[]> {
+  try {
+    const modelsList = await ai.models.list();
+    const textModels: string[] = [];
+    for await (const m of modelsList) {
+      const name = m.name.replace("models/", "");
+      if (
+        name.includes("gemini") &&
+        !name.includes("tts") &&
+        !name.includes("image") &&
+        !name.includes("audio") &&
+        !name.includes("omni") &&
+        !name.includes("embedding") &&
+        !name.includes("live") &&
+        !name.includes("robotics") &&
+        !name.includes("computer-use")
+      ) {
+        textModels.push(name);
+      }
+    }
+    
+    const preferredOrder = [
+      "gemini-2.5-flash",
+      "gemini-2.0-flash",
+      "gemini-3.1-flash-lite",
+      "gemini-2.5-flash-lite",
+      "gemini-2.0-flash-lite",
+      "gemini-1.5-flash",
+      "gemini-2.5-pro",
+      "gemini-1.5-pro",
+      "gemini-3.5-flash",
+      "gemini-3.1-pro-preview",
+      "gemini-3.1-flash-lite-preview"
+    ];
+
+    textModels.sort((a, b) => {
+      const aIndex = preferredOrder.indexOf(a);
+      const bIndex = preferredOrder.indexOf(b);
+      
+      if (aIndex !== -1 && bIndex !== -1) {
+        return aIndex - bIndex;
+      }
+      if (aIndex !== -1) return -1;
+      if (bIndex !== -1) return 1;
+
+      const aIsPreview = a.includes("preview") || a.includes("experimental") || a.startsWith("gemini-3");
+      const bIsPreview = b.includes("preview") || b.includes("experimental") || b.startsWith("gemini-3");
+      
+      if (aIsPreview && !bIsPreview) return 1;
+      if (!aIsPreview && bIsPreview) return -1;
+
+      const aMatch = a.match(/gemini-(\d+\.\d+|\d+)/);
+      const bMatch = b.match(/gemini-(\d+\.\d+|\d+)/);
+      const aVer = aMatch ? parseFloat(aMatch[1]) : 0;
+      const bVer = bMatch ? parseFloat(bMatch[1]) : 0;
+      if (aVer !== bVer) return bVer - aVer;
+      
+      const aRank = a.includes("pro") ? 2 : (a.includes("flash") && !a.includes("lite") ? 1 : 0);
+      const bRank = b.includes("pro") ? 2 : (b.includes("flash") && !b.includes("lite") ? 1 : 0);
+      return bRank - aRank;
+    });
+
+    if (textModels.length > 0) {
+      return textModels;
+    }
+  } catch (err) {
+    console.error("Model list fetch failed, using fallbacks:", err);
+  }
+  
   return [
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
     "gemini-3.1-flash-lite",
     "gemini-2.5-flash-lite",
-    "gemini-3.5-flash",
-    "gemini-3.1-pro-preview"
+    "gemini-2.0-flash-lite",
+    "gemini-1.5-flash",
+    "gemini-2.5-pro",
+    "gemini-1.5-pro"
   ];
 }
 
@@ -64,12 +136,25 @@ Respond ONLY in valid JSON. Do not include markdown code block formatting (like 
           } catch (error: any) {
             lastError = error;
             const status = error?.status || (error?.response?.status);
-            if (status === 503 || status === 429) {
+            const isRateLimit = 
+              status === 429 || 
+              error?.message?.includes("429") || 
+              error?.message?.includes("Quota") || 
+              error?.message?.includes("quota") || 
+              error?.message?.includes("RESOURCE_EXHAUSTED") ||
+              error?.status === "RESOURCE_EXHAUSTED" ||
+              error?.code === 429;
+
+            if (isRateLimit) {
+              retries = 0; // Don't retry on rate limits!
+            } else if (status === 503) {
               retries--;
               if (retries > 0) {
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 continue;
               }
+            } else {
+              retries = 0; // Other errors (e.g., NOT_FOUND or INVALID_ARGUMENT), don't retry
             }
             console.warn(`Model ${model} failed: ${error.message || String(error)}`);
             break;
@@ -138,12 +223,25 @@ Respond ONLY in valid JSON. Do not include markdown code block formatting (like 
           } catch (error: any) {
             lastError = error;
             const status = error?.status || (error?.response?.status);
-            if (status === 503 || status === 429) {
+            const isRateLimit = 
+              status === 429 || 
+              error?.message?.includes("429") || 
+              error?.message?.includes("Quota") || 
+              error?.message?.includes("quota") || 
+              error?.message?.includes("RESOURCE_EXHAUSTED") ||
+              error?.status === "RESOURCE_EXHAUSTED" ||
+              error?.code === 429;
+
+            if (isRateLimit) {
+              retries = 0; // Don't retry on rate limits!
+            } else if (status === 503) {
               retries--;
               if (retries > 0) {
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 continue;
               }
+            } else {
+              retries = 0; // Other errors (e.g., NOT_FOUND or INVALID_ARGUMENT), don't retry
             }
             console.warn(`Model ${model} failed: ${error.message || String(error)}`);
             break;
@@ -161,7 +259,10 @@ Respond ONLY in valid JSON. Do not include markdown code block formatting (like 
       res.json({ summary: response.text });
     } catch (error: any) {
       console.error("Gemini API Error:", error);
-      res.status(500).json({ error: "Failed to generate summary" });
+      res.status(500).json({ 
+        error: "Failed to generate summary",
+        details: error?.message || String(error)
+      });
     }
   });
 
@@ -173,18 +274,67 @@ Respond ONLY in valid JSON. Do not include markdown code block formatting (like 
       }
 
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const response = await ai.models.generateContent({
-        model: "gemini-3.1-flash-tts-preview",
-        contents: text,
-        config: {
-          responseModalities: ["AUDIO"],
-          speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: { voiceName: "Zephyr" }
+      const ttsModels = [
+        "gemini-2.5-flash-preview-tts",
+        "gemini-3.1-flash-tts-preview",
+        "gemini-2.5-pro-preview-tts"
+      ];
+
+      let response;
+      let lastError;
+
+      for (const model of ttsModels) {
+        let retries = 2;
+        let success = false;
+        while (retries > 0 && !success) {
+          try {
+            response = await ai.models.generateContent({
+              model: model,
+              contents: text,
+              config: {
+                responseModalities: ["AUDIO"],
+                speechConfig: {
+                  voiceConfig: {
+                    prebuiltVoiceConfig: { voiceName: "Zephyr" }
+                  }
+                }
+              }
+            });
+            success = true;
+            break;
+          } catch (error: any) {
+            lastError = error;
+            const status = error?.status || (error?.response?.status);
+            const isRateLimit = 
+              status === 429 || 
+              error?.message?.includes("429") || 
+              error?.message?.includes("Quota") || 
+              error?.message?.includes("quota") || 
+              error?.message?.includes("RESOURCE_EXHAUSTED") ||
+              error?.status === "RESOURCE_EXHAUSTED" ||
+              error?.code === 429;
+
+            if (isRateLimit) {
+              retries = 0;
+            } else if (status === 503) {
+              retries--;
+              if (retries > 0) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                continue;
+              }
+            } else {
+              retries = 0;
             }
+            console.warn(`Model ${model} failed: ${error.message || String(error)}`);
+            break;
           }
         }
-      });
+        if (success) break;
+      }
+
+      if (!response) {
+        throw lastError || new Error("TTS generation failed");
+      }
 
       const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
       if (!base64Audio) {
@@ -194,7 +344,10 @@ Respond ONLY in valid JSON. Do not include markdown code block formatting (like 
       res.json({ audio: base64Audio });
     } catch (error: any) {
       console.error("TTS Error:", error);
-      res.status(500).json({ error: "Failed to generate TTS" });
+      res.status(500).json({ 
+        error: "Failed to generate TTS",
+        details: error?.message || String(error)
+      });
     }
   });
 

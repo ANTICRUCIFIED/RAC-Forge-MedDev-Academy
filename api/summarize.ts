@@ -22,7 +22,36 @@ async function getModels(ai: any): Promise<string[]> {
       }
     }
     
+    const preferredOrder = [
+      "gemini-2.5-flash",
+      "gemini-2.0-flash",
+      "gemini-3.1-flash-lite",
+      "gemini-2.5-flash-lite",
+      "gemini-2.0-flash-lite",
+      "gemini-1.5-flash",
+      "gemini-2.5-pro",
+      "gemini-1.5-pro",
+      "gemini-3.5-flash",
+      "gemini-3.1-pro-preview",
+      "gemini-3.1-flash-lite-preview"
+    ];
+
     textModels.sort((a, b) => {
+      const aIndex = preferredOrder.indexOf(a);
+      const bIndex = preferredOrder.indexOf(b);
+      
+      if (aIndex !== -1 && bIndex !== -1) {
+        return aIndex - bIndex;
+      }
+      if (aIndex !== -1) return -1;
+      if (bIndex !== -1) return 1;
+
+      const aIsPreview = a.includes("preview") || a.includes("experimental") || a.startsWith("gemini-3");
+      const bIsPreview = b.includes("preview") || b.includes("experimental") || b.startsWith("gemini-3");
+      
+      if (aIsPreview && !bIsPreview) return 1;
+      if (!aIsPreview && bIsPreview) return -1;
+
       const aMatch = a.match(/gemini-(\d+\.\d+|\d+)/);
       const bMatch = b.match(/gemini-(\d+\.\d+|\d+)/);
       const aVer = aMatch ? parseFloat(aMatch[1]) : 0;
@@ -44,6 +73,9 @@ async function getModels(ai: any): Promise<string[]> {
   return [
     "gemini-2.5-flash",
     "gemini-2.0-flash",
+    "gemini-3.1-flash-lite",
+    "gemini-2.5-flash-lite",
+    "gemini-2.0-flash-lite",
     "gemini-1.5-flash",
     "gemini-2.5-pro",
     "gemini-1.5-pro"
@@ -104,12 +136,25 @@ export default async function handler(req: Request) {
         } catch (error: any) {
           lastError = error;
           const status = error?.status || (error?.response?.status);
-          if (status === 503 || status === 429) {
+          const isRateLimit = 
+            status === 429 || 
+            error?.message?.includes("429") || 
+            error?.message?.includes("Quota") || 
+            error?.message?.includes("quota") || 
+            error?.message?.includes("RESOURCE_EXHAUSTED") ||
+            error?.status === "RESOURCE_EXHAUSTED" ||
+            error?.code === 429;
+
+          if (isRateLimit) {
+            retries = 0; // Don't retry on rate limits!
+          } else if (status === 503) {
             retries--;
             if (retries > 0) {
               await new Promise(resolve => setTimeout(resolve, 1000));
               continue;
             }
+          } else {
+            retries = 0; // Other errors (e.g., NOT_FOUND or INVALID_ARGUMENT), don't retry
           }
           console.warn(`Model ${model} failed: ${error.message || String(error)}`);
           break;

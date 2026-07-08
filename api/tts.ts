@@ -25,9 +25,9 @@ export default async function handler(req: Request) {
     
     
     const ttsModels = [
-      "gemini-2.0-flash",
-      "gemini-2.5-flash",
-      "gemini-3.1-flash-tts-preview"
+      "gemini-2.5-flash-preview-tts",
+      "gemini-3.1-flash-tts-preview",
+      "gemini-2.5-pro-preview-tts"
     ];
     
     let response;
