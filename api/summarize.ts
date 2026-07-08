@@ -1,7 +1,4 @@
-export const config = {
-  runtime: 'edge',
-};
-
+export const maxDuration = 60;
 import { GoogleGenAI } from "@google/genai";
 
 export default async function handler(req: Request) {
