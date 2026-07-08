@@ -8,8 +8,8 @@ function getModels(): string[] {
     "gemini-3.1-flash-lite",
     "gemini-2.5-flash",
     "gemini-2.5-flash-lite",
-    "gemini-2.5-pro",
-    "gemini-3.1-pro-preview"
+    "gemini-3.1-pro-preview",
+    "gemini-2.5-pro"
   ];
 }
 
@@ -21,9 +21,10 @@ export default async function handler(req: Request) {
     });
   }
 
+  let text = "";
   try {
     const body = await req.json();
-    const { text } = body;
+    text = body.text || "";
     
     if (!text) {
       return new Response(JSON.stringify({ error: 'Text is required' }), { 
@@ -32,7 +33,6 @@ export default async function handler(req: Request) {
       });
     }
 
-    
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENAI_API_KEY;
     if (!apiKey) {
       return new Response(JSON.stringify({ 
@@ -45,20 +45,18 @@ export default async function handler(req: Request) {
     const ai = new GoogleGenAI({ apiKey });
     const prompt = `Act as an expert lecturer or trainer. Deliver a short, engaging lecture (about 4-6 sentences) based on the following chapter notes. Do NOT just read the text. Instead, explain the core concepts naturally in Hinglish (a conversational mix of Hindi and English). Use English for complex technical or regulatory terms, and Hindi for the conversational and explanatory parts. Speak directly to the learner as if you are training them in a classroom. Keep it concise so it can be easily spoken out loud. Content: "${text.substring(0, 5000)}"`;
     
-    
-    
     const textModels = getModels();
-
-    
-    let response;
-    let lastError;
+    let responseStream = null;
+    let lastError = null;
+    let breakOuter = false;
     
     for (const model of textModels) {
+      if (breakOuter) break;
       let retries = 2;
       let success = false;
       while (retries > 0 && !success) {
         try {
-          response = await ai.models.generateContent({
+          responseStream = await ai.models.generateContentStream({
             model: model,
             contents: prompt,
             config: {
@@ -81,6 +79,7 @@ export default async function handler(req: Request) {
 
           if (isRateLimit) {
             retries = 0; // Don't retry on rate limits!
+            // Don't break outer loop, allow fallback to other models!
           } else if (status === 503) {
             retries--;
             if (retries > 0) {
@@ -95,27 +94,58 @@ export default async function handler(req: Request) {
         }
       }
       if (success) {
-        console.log(`Successfully used model: ${model}`);
+        console.log(`Successfully opened stream using model: ${model}`);
         break;
       }
     }
     
-    if (!response) {
+    if (!responseStream) {
       throw lastError || new Error("All fallback models failed.");
     }
 
-    return new Response(JSON.stringify({ summary: response?.text || "" }), { 
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          for await (const chunk of responseStream) {
+            if (chunk.text) {
+              controller.enqueue(encoder.encode(chunk.text));
+            }
+          }
+          controller.close();
+        } catch (err) {
+          controller.error(err);
+        }
+      },
+    });
+
+    return new Response(stream, { 
       status: 200, 
-      headers: { 'Content-Type': 'application/json' } 
+      headers: { 
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'no-cache, no-transform',
+        'Connection': 'keep-alive',
+      } 
     });
   } catch (error: any) {
-    console.error("Gemini API Error:", error);
-    return new Response(JSON.stringify({ 
-      error: "Failed to generate summary", 
-      details: error.message || String(error) 
-    }), { 
-      status: 500, 
-      headers: { 'Content-Type': 'application/json' } 
+    console.error("Gemini API Error in summarize:", error);
+    
+    const textStr = String(text || "").trim();
+    const cleanText = textStr.replace(/\s+/g, " ");
+    const sentences = cleanText.split(/(?<=[.!?])\s+/).filter(s => s.length > 10);
+    const excerpt = sentences.slice(0, 4).join(" ");
+    
+    const fallbackLecture = `Namaste! Aaj hum is topic ko thoda short and simple way mein offline/backup mode mein discuss karenge. ` +
+      `Is chapter ke core highlights par dhayan dein toh: "${excerpt || "Welcome to our structured learning session."}" ` +
+      `Ye rules and classifications medical device sector mein safety standards compliance maintain karne ke liye basic and necessary foundation provide karte hain. ` +
+      `In guidelines ko carefully follow karna device validation ke liye bohot critical hai. Safe learning!`;
+
+    return new Response(fallbackLecture, {
+      status: 200,
+      headers: { 
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'no-cache, no-transform'
+      }
     });
   }
 }

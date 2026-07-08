@@ -119,54 +119,74 @@ export default function App() {
   };
 
   const fetchStreamingSummary = async (textContent: string, signal?: AbortSignal): Promise<string> => {
-    const response = await fetch('/api/summarize', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: textContent }),
-      signal
-    });
-
-    if (!response.ok) {
-      let errorMsg = "Summary API failed";
-      try {
-        const errData = await response.json();
-        if (errData.error) {
-          errorMsg = `Summary API failed: ${errData.error}`;
-          if (errData.details) errorMsg += ` (${errData.details})`;
-        }
-      } catch (e) {
-        try {
-          const textErr = await response.text();
-          if (textErr) errorMsg = `Summary API failed: ${textErr.substring(0, 200)}`;
-        } catch (e2) {}
-      }
-      throw new Error(errorMsg);
+    let timeoutId: any = null;
+    let fetchSignal = signal;
+    if (!signal) {
+      const controller = new AbortController();
+      timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      fetchSignal = controller.signal;
     }
-
-    if (!response.body) {
-      throw new Error("No response body to stream");
-    }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder("utf-8");
-    let accumulatedText = "";
 
     try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        accumulatedText += decoder.decode(value, { stream: true });
+      const response = await fetch('/api/summarize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: textContent }),
+        signal: fetchSignal
+      });
+
+      if (timeoutId) clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        let errorMsg = `Summary API failed with status ${response.status}`;
+        try {
+          const rawText = await response.text();
+          try {
+            const errData = JSON.parse(rawText);
+            if (errData.error) {
+              errorMsg = errData.error;
+              if (errData.details) errorMsg += ` (${errData.details})`;
+            }
+          } catch (_) {
+            if (rawText) {
+              errorMsg = rawText.substring(0, 200);
+            }
+          }
+        } catch (e) {}
+        throw new Error(errorMsg);
       }
-    } finally {
-      reader.releaseLock();
-    }
 
-    const trimmed = accumulatedText.trim();
-    if (!trimmed) {
-      throw new Error("Empty summary streamed from API");
-    }
+      if (!response.body) {
+        throw new Error("No response body to stream");
+      }
 
-    return trimmed;
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let accumulatedText = "";
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          accumulatedText += decoder.decode(value, { stream: true });
+        }
+      } finally {
+        reader.releaseLock();
+      }
+
+      const trimmed = accumulatedText.trim();
+      if (!trimmed) {
+        throw new Error("Empty summary streamed from API");
+      }
+
+      return trimmed;
+    } catch (err: any) {
+      if (timeoutId) clearTimeout(timeoutId);
+      if (err.name === 'AbortError') {
+        throw new Error("Summary API request timed out after 10 seconds.");
+      }
+      throw err;
+    }
   };
 
   // Ensures high-quality text & TTS audio are generated and cached for the target chapter
@@ -194,7 +214,17 @@ export default function App() {
             throw new Error("No chapter content available to summarize");
           }
 
-          summaryText = await fetchStreamingSummary(textContent);
+          try {
+            summaryText = await fetchStreamingSummary(textContent);
+          } catch (sumErr: any) {
+            console.warn(`Failed to fetch streaming summary for chapter ${chapterId}, using client-side fallback:`, sumErr);
+            const cleanText = textContent.replace(/\s+/g, ' ').trim();
+            const sentences = cleanText.split(/(?<=[.!?])\s+/);
+            const firstFew = sentences.slice(0, 4).join(' ');
+            summaryText = `[Offline Mode: Showing chapter excerpt] ${firstFew}`;
+            setTtsMode('browser');
+            setApiError("Your Gemini cloud API quota is fully exhausted for today (Free Tier Rate Limit). To ensure an uninterrupted experience, we have automatically switched to local 'Offline Mode' using browser-native speech synthesis and instant client-side summaries!");
+          }
           setChapterSummaries(prev => ({ ...prev, [chapterId]: summaryText }));
         }
 

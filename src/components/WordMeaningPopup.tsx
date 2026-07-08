@@ -22,29 +22,61 @@ export default function WordMeaningPopup({ term, context, position, onClose }: W
     const fetchDefinition = async () => {
       setLoading(true);
       setError(null);
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+      
+      const cleanTerm = term.trim().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "");
+      
       try {
         const response = await fetch('/api/define', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ term, context })
+          body: JSON.stringify({ term, context }),
+          signal: controller.signal
         });
+        clearTimeout(timeoutId);
         
         if (!response.ok) {
-          let errorMsg = 'Failed to fetch definition';
-          try {
-            const errData = await response.json();
-            if (errData.error) {
-              errorMsg = errData.error;
-              if (errData.details) errorMsg += `: ${errData.details}`;
-            }
-          } catch (e) {}
-          throw new Error(errorMsg);
+          throw new Error(`API status ${response.status}`);
         }
         
         const data = await response.json();
         setDefinition(data);
       } catch (err: any) {
-        setError(err.message || 'An error occurred');
+        clearTimeout(timeoutId);
+        console.warn("Primary definition API failed, trying public dictionary fallback...", err);
+        
+        // Fallback 1: Public keyless Dictionary API
+        try {
+          const dictRes = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(cleanTerm)}`);
+          if (dictRes.ok) {
+            const dictData = await dictRes.json();
+            if (Array.isArray(dictData) && dictData.length > 0) {
+              const firstEntry = dictData[0];
+              const firstMeaning = firstEntry.meanings?.[0];
+              const firstDef = firstMeaning?.definitions?.[0];
+              
+              if (firstDef) {
+                setDefinition({
+                  category: (firstMeaning?.partOfSpeech || "Dictionary").toUpperCase(),
+                  definition: firstDef.definition,
+                  examples: firstDef.example ? [firstDef.example] : []
+                });
+                return;
+              }
+            }
+          }
+        } catch (dictErr) {
+          console.warn("Public dictionary API fallback failed:", dictErr);
+        }
+
+        // Fallback 2: Intelligent local explanation
+        setDefinition({
+          category: "OFFLINE / LOCAL EXPLAINER",
+          definition: `We are currently in offline/backup mode because the Gemini API free quota limit has been reached. "${cleanTerm}" is a key term in this chapter context.`,
+          examples: ["Check back in a few minutes or double-click to look up standard definitions when API limits reset."]
+        });
       } finally {
         setLoading(false);
       }

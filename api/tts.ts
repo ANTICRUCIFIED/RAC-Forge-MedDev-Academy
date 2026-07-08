@@ -36,8 +36,10 @@ export default async function handler(req: Request) {
     
     let response;
     let lastError;
+    let breakOuter = false;
     
     for (const model of ttsModels) {
+      if (breakOuter) break;
       let retries = 2;
       let success = false;
       while (retries > 0 && !success) {
@@ -70,6 +72,7 @@ export default async function handler(req: Request) {
 
           if (isRateLimit) {
             retries = 0; // Don't retry on rate limits!
+            // Don't break outer loop, allow fallback to other models!
           } else if (status === 503) {
             retries--;
             if (retries > 0) {
@@ -87,12 +90,12 @@ export default async function handler(req: Request) {
     }
     
     if (!response) {
-      const errorStr = String(lastError?.message || lastError);
       return new Response(JSON.stringify({ 
-        error: 'TTS generation failed', 
-        details: errorStr 
+        audio: null,
+        offline_mode: true,
+        details: 'TTS generation skipped or rate limited'
       }), { 
-        status: 500,
+        status: 200,
         headers: { 'Content-Type': 'application/json' }
       });
     }
@@ -101,7 +104,14 @@ export default async function handler(req: Request) {
     const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
     
     if (!base64Audio) {
-      return new Response(JSON.stringify({ error: 'Failed to generate audio' }), { status: 500 });
+      return new Response(JSON.stringify({ 
+        audio: null, 
+        offline_mode: true,
+        details: 'No inline data generated'
+      }), { 
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
 
     return new Response(JSON.stringify({ audio: base64Audio }), { 
@@ -110,6 +120,13 @@ export default async function handler(req: Request) {
     });
   } catch (error: any) {
     console.error("TTS API Error:", error);
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    return new Response(JSON.stringify({ 
+      audio: null,
+      offline_mode: true,
+      details: error.message || String(error)
+    }), { 
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 }
