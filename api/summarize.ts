@@ -1,13 +1,12 @@
-export const runtime = 'edge';
 export const maxDuration = 60;
 import { GoogleGenAI } from "@google/genai";
 
 function getModels(): string[] {
   return [
-    "gemini-2.5-flash",
-    "gemini-2.5-flash-lite",
-    "gemini-3.5-flash",
     "gemini-3.1-flash-lite",
+    "gemini-2.5-flash",
+    "gemini-3.5-flash",
+    "gemini-2.5-flash-lite",
     "gemini-flash-latest",
     "gemini-3.1-pro-preview",
     "gemini-2.5-pro"
@@ -91,7 +90,7 @@ export default async function handler(req: Request) {
     
     for (const model of textModels) {
       if (breakOuter) break;
-      let retries = 2;
+      let retries = 1;
       let success = false;
       while (retries > 0 && !success) {
         try {

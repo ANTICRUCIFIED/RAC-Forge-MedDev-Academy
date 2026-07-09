@@ -5,10 +5,10 @@ import { GoogleGenAI } from "@google/genai";
 
 function getModels(): string[] {
   return [
-    "gemini-2.5-flash",
-    "gemini-2.5-flash-lite",
-    "gemini-3.5-flash",
     "gemini-3.1-flash-lite",
+    "gemini-2.5-flash",
+    "gemini-3.5-flash",
+    "gemini-2.5-flash-lite",
     "gemini-flash-latest",
     "gemini-3.1-pro-preview",
     "gemini-2.5-pro"
@@ -94,7 +94,7 @@ Respond ONLY in valid JSON. Do not include markdown code block formatting (like 
       
       for (const model of textModels) {
         if (breakOuter) break;
-        let retries = 2;
+        let retries = 1;
         let success = false;
         while (retries > 0 && !success) {
           try {
@@ -230,7 +230,7 @@ Respond ONLY in valid JSON. Do not include markdown code block formatting (like 
       
       for (const model of textModels) {
         if (breakOuter) break;
-        let retries = 2;
+        let retries = 1;
         let success = false;
         while (retries > 0 && !success) {
           try {
@@ -340,7 +340,7 @@ Respond ONLY in valid JSON. Do not include markdown code block formatting (like 
 
       for (const model of ttsModels) {
         if (breakOuter) break;
-        let retries = 2;
+        let retries = 1;
         let success = false;
         while (retries > 0 && !success) {
           try {

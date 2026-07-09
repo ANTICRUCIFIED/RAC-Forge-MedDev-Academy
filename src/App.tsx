@@ -183,7 +183,7 @@ export default function App() {
     } catch (err: any) {
       if (timeoutId) clearTimeout(timeoutId);
       if (err.name === 'AbortError') {
-        throw new Error("Summary API request timed out after 10 seconds.");
+        throw new Error("Summary API request timed out after 45 seconds.");
       }
       throw err;
     }
