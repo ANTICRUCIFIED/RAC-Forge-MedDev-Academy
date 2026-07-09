@@ -209,13 +209,13 @@ export default function Chapter11() {
   N9["How long will it remain in continuous use?"]
   N8 --> N9
   N10["↓"]
-  N9 -->|Less than 60 minutes (Transient)| N10
-  N9 -->|60 minutes to 30 days (Short-term)| N10
-  N9 -->|More than 30 days (Long-term)| N10
+  N9 -->|Less than 60 minutes - Transient| N10
+  N9 -->|60 minutes to 30 days - Short-term| N10
+  N9 -->|More than 30 days - Long-term| N10
   N11{"Rule 5: How long will it be used in the body orifice?"}
-  N11 -->|Transient (< 60 minutes)| N11A["Rule 5 (Class A)"]
-  N11 -->|Short-term (60 mins to 30 days) OR oral/nasal/ear cavity| N11B["Rule 5 (Class B)"]
-  N11 -->|Long-term (> 30 days) NOT in oral/nasal/ear cavity| N11C["Rule 5 (Class C)"]
+  N11 -->|Transient - less than 60 minutes| N11A["Rule 5 (Class A)"]
+  N11 -->|Short-term - 60 mins to 30 days OR oral/nasal/ear cavity| N11B["Rule 5 (Class B)"]
+  N11 -->|Long-term - more than 30 days NOT in oral/nasal/ear cavity| N11C["Rule 5 (Class C)"]
   N10 --> N11
 `} />
 </div>

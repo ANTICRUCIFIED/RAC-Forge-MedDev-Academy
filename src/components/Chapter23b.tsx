@@ -266,14 +266,14 @@ export default function Chapter23b() {
   RULE5 -->|Long-term| R5C["Class C"]
   
   HOW_INVASIVE -->|Surgical/Implant| SURG_DURATION{Duration of use?}
-  SURG_DURATION -->|Transient <60 mins| RULE6{"Rule 6"}
+  SURG_DURATION -->|Transient - less than 60 mins| RULE6{"Rule 6"}
   RULE6 -->|Reusable| R6A["Class A"]
   RULE6 -->|Other| R6B["Class B"]
   RULE6 -->|CNS/Heart| R6C["Class C"]
   SURG_DURATION -->|Short-term 1hr-30days| RULE7{"Rule 7"}
   RULE7 -->|Medicine/CNS| R7C["Class C"]
   RULE7 -->|Other| R7B["Class B"]
-  SURG_DURATION -->|Long-term >30 days / Implantable| RULE8{"Rule 8"}
+  SURG_DURATION -->|Long-term - more than 30 days / Implantable| RULE8{"Rule 8"}
   RULE8 -->|Heart/CNS/Active| R8D["Class D"]
   RULE8 -->|Other| R8C["Class C"]
   

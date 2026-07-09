@@ -158,7 +158,7 @@ export default function Chapter19() {
   N9["Does it diagnose or monitor?"]
   N8 --> N9
   N9 -->|YES| N10{"Rule 10: What kind of diagnosis or monitoring does it perform?"}
-  N10 -->|Images radiopharmaceuticals or vital parameters (immediate danger)| N10A["Rule 10 (Class C)"]
+  N10 -->|Images radiopharmaceuticals or vital parameters - immediate danger| N10A["Rule 10 (Class C)"]
   N10 -->|Supplies energy to be absorbed or general monitoring| N10B["Rule 10 (Class B)"]
   N11["↓"]
   N9 -->|NO| N11

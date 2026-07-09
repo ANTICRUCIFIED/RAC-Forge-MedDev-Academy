@@ -229,9 +229,9 @@ export default function Chapter10() {
   N6["How?"]
   N5 --> N6
   N6 -->|Through a natural body opening?| N7{"Rule 5: How long will it be used in the body orifice?"}
-  N7 -->|Transient (< 60 minutes)| N7A["Rule 5 (Class A)"]
-  N7 -->|Short-term (60 mins to 30 days) OR oral/nasal/ear cavity| N7B["Rule 5 (Class B)"]
-  N7 -->|Long-term (> 30 days) NOT in oral/nasal/ear cavity| N7C["Rule 5 (Class C)"]
+  N7 -->|Transient - less than 60 minutes| N7A["Rule 5 (Class A)"]
+  N7 -->|Short-term - 60 mins to 30 days OR oral/nasal/ear cavity| N7B["Rule 5 (Class B)"]
+  N7 -->|Long-term - more than 30 days NOT in oral/nasal/ear cavity| N7C["Rule 5 (Class C)"]
   N6 -->|Through surgery?| N8["Continue evaluating Rules 6–8"]
   N9["↓"]
   N6 --> N9
