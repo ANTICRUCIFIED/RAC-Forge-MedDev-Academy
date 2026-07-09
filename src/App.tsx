@@ -123,7 +123,7 @@ export default function App() {
     let fetchSignal = signal;
     if (!signal) {
       const controller = new AbortController();
-      timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      timeoutId = setTimeout(() => controller.abort(), 45000); // 45 second timeout
       fetchSignal = controller.signal;
     }
 
@@ -386,7 +386,7 @@ export default function App() {
           try {
             const textContent = contentRef.current?.innerText || "";
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 12000); // 12-second timeout
+            const timeoutId = setTimeout(() => controller.abort(), 45000); // 45-second timeout
             
             textToSpeak = await fetchStreamingSummary(textContent, controller.signal);
             clearTimeout(timeoutId);

@@ -24,7 +24,7 @@ export default function WordMeaningPopup({ term, context, position, onClose }: W
       setError(null);
       
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 35000); // 35 second timeout
       
       const cleanTerm = term.trim().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "");
       
