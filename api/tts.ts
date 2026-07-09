@@ -2,6 +2,44 @@ export const runtime = 'edge';
 export const maxDuration = 60;
 import { GoogleGenAI } from "@google/genai";
 
+function isRateLimited(error: any): boolean {
+  const errStr = String(error?.message || error).toLowerCase();
+  const status = String(error?.status || error?.response?.status || "").toLowerCase();
+  const code = error?.code || error?.response?.status || error?.status;
+  
+  return (
+    code === 429 ||
+    status === "429" ||
+    status.includes("429") ||
+    status.includes("resource_exhausted") ||
+    status.includes("too many requests") ||
+    errStr.includes("429") ||
+    errStr.includes("quota") ||
+    errStr.includes("resource_exhausted") ||
+    errStr.includes("limit exceeded") ||
+    errStr.includes("rate limit")
+  );
+}
+
+function isServiceUnavailable(error: any): boolean {
+  const errStr = String(error?.message || error).toLowerCase();
+  const status = String(error?.status || error?.response?.status || "").toLowerCase();
+  const code = error?.code || error?.response?.status || error?.status;
+
+  return (
+    code === 503 ||
+    status === "503" ||
+    status.includes("503") ||
+    status.includes("unavailable") ||
+    status.includes("service unavailable") ||
+    errStr.includes("503") ||
+    errStr.includes("unavailable") ||
+    errStr.includes("overloaded") ||
+    errStr.includes("high demand") ||
+    errStr.includes("try again later")
+  );
+}
+
 export default async function handler(req: Request) {
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
@@ -60,20 +98,9 @@ export default async function handler(req: Request) {
           break;
         } catch (error: any) {
           lastError = error;
-          const status = error?.status || (error?.response?.status);
-          const isRateLimit = 
-            status === 429 || 
-            error?.message?.includes("429") || 
-            error?.message?.includes("Quota") || 
-            error?.message?.includes("quota") || 
-            error?.message?.includes("RESOURCE_EXHAUSTED") ||
-            error?.status === "RESOURCE_EXHAUSTED" ||
-            error?.code === 429;
-
-          if (isRateLimit) {
+          if (isRateLimited(error)) {
             retries = 0; // Don't retry on rate limits!
-            // Don't break outer loop, allow fallback to other models!
-          } else if (status === 503) {
+          } else if (isServiceUnavailable(error)) {
             retries--;
             if (retries > 0) {
               await new Promise(resolve => setTimeout(resolve, 1000));
