@@ -71,8 +71,8 @@ export default function InteractiveFlowchart({ children, minHeight = "400px" }: 
       >
         <ZoomControls />
         <TransformComponent wrapperStyle={{ width: '100%', height: '100%', minHeight }}>
-          <div className="w-full h-full flex justify-center items-center p-8 cursor-move select-none">
-            <div className="font-sans text-slate-700">
+          <div className="p-8 cursor-move select-none flex justify-center items-center min-w-max min-h-full">
+            <div className="font-sans text-slate-700 min-w-max [&>div]:!w-auto [&>div]:!min-w-max">
               {children}
             </div>
           </div>

@@ -76,36 +76,46 @@ export function TwoWaySplit({
   rightLabel?: string;
 }) {
   return (
-    <div className="flex flex-col items-center w-full my-1">
+    <div className="flex flex-col items-center min-w-max my-1">
       {/* Stem going down from parent */}
       <div className="w-[2px] h-5 bg-sky-300"></div>
       
-      {/* Horizontal split shoulder */}
-      <div className="relative w-full flex justify-between h-4">
-        {/* Horizontal connection line spanning from 25% to 75% */}
-        <div className="absolute top-0 left-[25%] right-[25%] h-[2px] bg-sky-300"></div>
-        {/* Left drop line */}
-        <div className="absolute top-0 left-[25%] w-[2px] h-full bg-sky-300"></div>
-        {/* Right drop line */}
-        <div className="absolute top-0 right-[25%] w-[2px] h-full bg-sky-300"></div>
-      </div>
-      
       {/* Left & Right branches */}
-      <div className="flex w-full gap-8">
+      <div className="flex flex-row items-start">
         {/* Left column */}
-        <div className="flex flex-col items-center w-1/2">
-          <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-black px-2 py-0.5 rounded-full mb-3 shadow-sm select-none">
+        <div className="flex flex-col items-center min-w-[280px]">
+          {/* Shoulder and drop line */}
+          <div className="relative w-full h-4">
+            {/* Horizontal shoulder line from center (50%) to right (100%) */}
+            <div className="absolute top-0 left-1/2 right-0 h-[2px] bg-sky-300"></div>
+            {/* Vertical drop line down the center (50%) */}
+            <div className="absolute top-0 bottom-0 left-1/2 w-[2px] bg-sky-300 -translate-x-1/2"></div>
+          </div>
+          
+          <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-black px-2 py-0.5 rounded-full mb-3 shadow-sm select-none z-10">
             {leftLabel}
           </span>
-          {leftChild}
+          <div className="px-4 w-full flex flex-col items-center">
+            {leftChild}
+          </div>
         </div>
         
         {/* Right column */}
-        <div className="flex flex-col items-center w-1/2">
-          <span className="bg-rose-50 text-rose-700 border border-rose-100 text-[10px] font-black px-2 py-0.5 rounded-full mb-3 shadow-sm select-none">
+        <div className="flex flex-col items-center min-w-[280px]">
+          {/* Shoulder and drop line */}
+          <div className="relative w-full h-4">
+            {/* Horizontal shoulder line from left (0%) to center (50%) */}
+            <div className="absolute top-0 left-0 right-1/2 h-[2px] bg-sky-300"></div>
+            {/* Vertical drop line down the center (50%) */}
+            <div className="absolute top-0 bottom-0 left-1/2 w-[2px] bg-sky-300 -translate-x-1/2"></div>
+          </div>
+          
+          <span className="bg-rose-50 text-rose-700 border border-rose-100 text-[10px] font-black px-2 py-0.5 rounded-full mb-3 shadow-sm select-none z-10">
             {rightLabel}
           </span>
-          {rightChild}
+          <div className="px-4 w-full flex flex-col items-center">
+            {rightChild}
+          </div>
         </div>
       </div>
     </div>
@@ -117,51 +127,48 @@ export function MultiSplit({
 }: {
   branches: { label: string; child: React.ReactNode }[];
 }) {
-  const percentSpan = 100 / branches.length;
-  const leftStart = percentSpan / 2;
-  const rightEnd = 100 - leftStart;
-
   return (
-    <div className="flex flex-col items-center w-full my-1">
+    <div className="flex flex-col items-center min-w-max my-1">
       {/* Vertical trunk line from parent */}
       <div className="w-[2px] h-5 bg-sky-300"></div>
       
-      {/* Horizontal connector line */}
-      <div className="relative w-full h-4">
-        <div 
-          className="absolute top-0 bg-sky-300 h-[2px]" 
-          style={{ left: `${leftStart}%`, right: `${rightEnd}%` }}
-        ></div>
-        <div 
-          className="absolute top-0 bg-sky-300 h-[2px]" 
-          style={{ left: `${leftStart}%`, right: `${100 - rightEnd}%` }}
-        ></div>
-        {branches.map((_, idx) => {
-          const colCenterPercent = (idx * percentSpan) + (percentSpan / 2);
+      {/* Column children */}
+      <div className="flex flex-row items-start mt-1">
+        {branches.map((b, idx) => {
+          // First branch: 50% to 100%
+          // Last branch: 0% to 50%
+          // Middle branches: 0% to 100%
+          let lineStyle = "absolute top-0 h-[2px] bg-sky-300";
+          if (idx === 0) {
+            lineStyle += " left-1/2 right-0";
+          } else if (idx === branches.length - 1) {
+            lineStyle += " left-0 right-1/2";
+          } else {
+            lineStyle += " left-0 right-0";
+          }
+
           return (
             <div 
               key={idx} 
-              className="absolute top-0 w-[2px] h-full bg-sky-300"
-              style={{ left: `${colCenterPercent}%` }}
-            ></div>
+              className="flex flex-col items-center min-w-[280px]"
+            >
+              {/* Shoulder header area */}
+              <div className="relative w-full h-4">
+                {/* Horizontal line segment */}
+                <div className={lineStyle}></div>
+                {/* Vertical drop line */}
+                <div className="absolute top-0 bottom-0 left-1/2 w-[2px] bg-sky-300 -translate-x-1/2"></div>
+              </div>
+
+              <span className="bg-sky-50 text-sky-700 border border-sky-100 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full mb-3 shadow-sm select-none z-10">
+                {b.label}
+              </span>
+              <div className="px-4 w-full flex flex-col items-center">
+                {b.child}
+              </div>
+            </div>
           );
         })}
-      </div>
-      
-      {/* Column children */}
-      <div className="flex w-full mt-1">
-        {branches.map((b, idx) => (
-          <div 
-            key={idx} 
-            className="flex flex-col items-center px-2"
-            style={{ width: `${percentSpan}%` }}
-          >
-            <span className="bg-sky-50 text-sky-700 border border-sky-100 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full mb-3 shadow-sm select-none">
-              {b.label}
-            </span>
-            {b.child}
-          </div>
-        ))}
       </div>
     </div>
   );

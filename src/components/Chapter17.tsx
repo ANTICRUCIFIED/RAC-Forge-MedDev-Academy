@@ -132,7 +132,7 @@ export default function Chapter17() {
 
       <h3 className="text-xl font-semibold mt-8 mb-3 flex items-center gap-2"><GitBranch className="w-6 h-6 text-emerald-600"/> 17.3 Rule (x) Decision Flow</h3>
       <InteractiveFlowchart minHeight="500px">
-        <div className="flex flex-col items-center w-full">
+        <div className="flex flex-col items-center min-w-max">
           <StartNode text="Short-Term Surgically Invasive (60m-30d)" />
           <Arrow />
           <DecisionNode text="Is it bio-absorbed, CNS/Heart contact, or has bio-effect?" />
@@ -149,7 +149,7 @@ export default function Chapter17() {
               />
             }
             rightChild={
-              <div className="flex flex-col items-center w-full">
+              <div className="flex flex-col items-center min-w-max">
                 <DecisionNode text="Is it for medicine delivery or radiation?" />
                 <TwoWaySplit
                   leftLabel="YES"
@@ -163,13 +163,13 @@ export default function Chapter17() {
                     />
                   }
                   rightChild={
-                    <div className="flex flex-col items-center w-full">
+                    <div className="flex flex-col items-center min-w-max">
                       <DecisionNode text="Does it undergo chemical change in the body?" />
                       <TwoWaySplit
                         leftLabel="YES"
                         rightLabel="NO"
                         leftChild={
-                          <div className="flex flex-col items-center w-full">
+                          <div className="flex flex-col items-center min-w-max">
                             <DecisionNode text="Is it placed into a tooth?" />
                             <TwoWaySplit
                               leftLabel="YES"

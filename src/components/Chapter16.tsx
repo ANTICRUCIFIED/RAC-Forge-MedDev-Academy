@@ -168,7 +168,7 @@ export default function Chapter16() {
 
       <h3 className="text-xl font-semibold mt-8 mb-3 flex items-center gap-2"><GitBranch className="w-6 h-6 text-emerald-600"/> 16.3 Rule (ix) Decision Flow</h3>
       <InteractiveFlowchart minHeight="500px">
-        <div className="flex flex-col items-center w-full">
+        <div className="flex flex-col items-center min-w-max">
           <StartNode text="Transient Surgically Invasive (&lt;60m)" />
           <Arrow />
           <DecisionNode text="Is there direct contact with Heart/Circulation or Central Nervous System?" />
@@ -185,7 +185,7 @@ export default function Chapter16() {
               />
             }
             rightChild={
-              <div className="flex flex-col items-center w-full">
+              <div className="flex flex-col items-center min-w-max">
                 <DecisionNode text="Is it absorbable, bio-effect, radiation, or a chemotherapeutic port?" />
                 <TwoWaySplit
                   leftLabel="YES"
@@ -199,7 +199,7 @@ export default function Chapter16() {
                     />
                   }
                   rightChild={
-                    <div className="flex flex-col items-center w-full">
+                    <div className="flex flex-col items-center min-w-max">
                       <DecisionNode text="Is it connected to an active device?" />
                       <TwoWaySplit
                         leftLabel="YES"
@@ -213,7 +213,7 @@ export default function Chapter16() {
                           />
                         }
                         rightChild={
-                          <div className="flex flex-col items-center w-full">
+                          <div className="flex flex-col items-center min-w-max">
                             <DecisionNode text="Is it a reusable surgical instrument?" />
                             <TwoWaySplit
                               leftLabel="YES"

@@ -233,7 +233,7 @@ export default function Chapter15() {
 
       <h3 className="text-xl font-semibold mt-8 mb-3 flex items-center gap-2"><GitBranch className="w-6 h-6 text-emerald-600"/> 15.15 Decision Tree</h3>
       <InteractiveFlowchart minHeight="450px">
-        <div className="flex flex-col items-center w-full">
+        <div className="flex flex-col items-center min-w-max">
           <StartNode text="Device Assessment" />
           <Arrow />
           <DecisionNode text="Does it require an external source of energy to perform its intended medical function?" />

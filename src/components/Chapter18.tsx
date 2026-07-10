@@ -127,7 +127,7 @@ export default function Chapter18() {
 
       <h3 className="text-xl font-semibold mt-8 mb-3 flex items-center gap-2"><GitBranch className="w-6 h-6 text-emerald-600"/> 18.3 Rule (xi) Decision Flow</h3>
       <InteractiveFlowchart minHeight="500px">
-        <div className="flex flex-col items-center w-full">
+        <div className="flex flex-col items-center min-w-max">
           <StartNode text="Long-Term Surgical Implant (&gt;30d)" />
           <Arrow />
           <DecisionNode text="Is it placed into a tooth?" />
@@ -144,7 +144,7 @@ export default function Chapter18() {
               />
             }
             rightChild={
-              <div className="flex flex-col items-center w-full">
+              <div className="flex flex-col items-center min-w-max">
                 <DecisionNode text="CNS/Heart direct contact, life-supporting, active implant, breast implant, or absorbed?" />
                 <TwoWaySplit
                   leftLabel="YES"
@@ -158,7 +158,7 @@ export default function Chapter18() {
                     />
                   }
                   rightChild={
-                    <div className="flex flex-col items-center w-full">
+                    <div className="flex flex-col items-center min-w-max">
                       <DecisionNode text="Does it undergo chemical change in the body?" />
                       <TwoWaySplit
                         leftLabel="YES"

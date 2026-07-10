@@ -179,7 +179,7 @@ export default function Chapter20() {
 
       <h3 className="text-xl font-semibold mt-8 mb-3 flex items-center gap-2"><GitBranch className="w-6 h-6 text-emerald-600"/> 20.3 Rule (xiii) Decision Flow</h3>
       <InteractiveFlowchart minHeight="500px">
-        <div className="flex flex-col items-center w-full">
+        <div className="flex flex-col items-center min-w-max">
           <StartNode text="Active Diagnostic / Admin" />
           <Arrow />
           <DecisionNode text="Is it for ionizing radiation radiology OR controlling it?" />
@@ -196,7 +196,7 @@ export default function Chapter20() {
               />
             }
             rightChild={
-              <div className="flex flex-col items-center w-full">
+              <div className="flex flex-col items-center min-w-max">
                 <DecisionNode text="Does it monitor vitals with immediate danger alarms?" />
                 <TwoWaySplit
                   leftLabel="YES"
@@ -210,7 +210,7 @@ export default function Chapter20() {
                     />
                   }
                   rightChild={
-                    <div className="flex flex-col items-center w-full">
+                    <div className="flex flex-col items-center min-w-max">
                       <DecisionNode text="Is it solely for visible/infrared light body illumination?" />
                       <TwoWaySplit
                         leftLabel="YES"
@@ -224,7 +224,7 @@ export default function Chapter20() {
                           />
                         }
                         rightChild={
-                          <div className="flex flex-col items-center w-full">
+                          <div className="flex flex-col items-center min-w-max">
                             <DecisionNode text="Is it an active pump for administering drugs or fluids?" />
                             <TwoWaySplit
                               leftLabel="YES"
