@@ -1,4 +1,5 @@
-import Mermaid from "./Mermaid";
+import InteractiveFlowchart from "./InteractiveFlowchart";
+import { StartNode, DecisionNode, Arrow, Branch, OutcomeCard, TwoWaySplit, MultiSplit } from "./FlowchartElements";
 import { ArrowDown, CornerDownRight, ShieldCheck, UserX, UserCheck, Layers, GitBranch, AlertCircle, Lightbulb } from 'lucide-react';
 
 export default function Chapter5() {
@@ -184,28 +185,62 @@ export default function Chapter5() {
 
       <h3 className="text-xl font-semibold mt-8 mb-3 flex items-center gap-2"><GitBranch className="w-6 h-6 text-emerald-600"/> 5.7 Decision Tree for Non-Invasive Devices</h3>
       
-      <div className="my-8 overflow-x-auto flex justify-center bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-  <Mermaid chart={`graph TD
-  N1["START"]
-  N2["↓"]
-  N1 --> N2
-  N3["Does the device enter the body?"]
-  N2 --> N3
-  N3 -->|YES| N4["It is an Invasive Device - Skip to Invasive Rules"]
-  N5["↓"]
-  N3 -->|NO| N5
-  N6["It is a Non-Invasive Device"]
-  N5 --> N6
-  N7["↓"]
-  N6 --> N7
-  N8["What is its purpose?"]
-  N7 --> N8
-  N8 -->|Only contacts intact skin or external support?| N9["Rule 1 (Class A)"]
-  N8 -->|Channels or stores blood, body fluids, cells, tissues, gases or liquids?| N10["Rule 2 "]
-  N8 -->|Modifies blood or body fluids?| N11["Rule 3 "]
-  N8 -->|Contacts injured skin?| N12["Rule 4 "]
-`} />
-</div>
+      <InteractiveFlowchart minHeight="450px">
+        <div className="flex flex-col items-center w-full">
+          <StartNode text="Device Under Review" />
+          <Arrow />
+          <DecisionNode text="Does the device enter the body?" />
+          
+          <TwoWaySplit
+            leftLabel="YES"
+            rightLabel="NO"
+            leftChild={
+              <div className="bg-amber-50 border-2 border-amber-400 text-amber-950 p-4 rounded-xl font-bold text-center max-w-[200px] text-xs shadow-sm">
+                Invasive Device (Rules v - xi) &rarr; Skip to Invasive Section
+              </div>
+            }
+            rightChild={
+              <MultiSplit
+                branches={[
+                  {
+                    label: "Skin Contact / External",
+                    child: (
+                      <OutcomeCard
+                        clazz="A"
+                        subpart="Rule 1"
+                        title="Rule (i)"
+                        examples={["Intact skin contacts", "Support hardware"]}
+                      />
+                    )
+                  },
+                  {
+                    label: "Channel / Store / Transport",
+                    child: (
+                      <OutcomeCard
+                        clazz="B"
+                        subpart="Rule 2"
+                        title="Rule (ii)"
+                        examples={["Gravity lines", "Fluid reservoirs"]}
+                      />
+                    )
+                  },
+                  {
+                    label: "Modify Fluids / Injured Skin",
+                    child: (
+                      <OutcomeCard
+                        clazz="C"
+                        subpart="Rule 3 & 4"
+                        title="Rule (iii) / Rule (iv)"
+                        examples={["Active modification", "Wounds"]}
+                      />
+                    )
+                  }
+                ]}
+              />
+            }
+          />
+        </div>
+      </InteractiveFlowchart>
       <h3 className="text-xl font-semibold mt-8 mb-3 flex items-center gap-2"><Lightbulb className="w-6 h-6 text-amber-500"/> 5.10 Memory Trick</h3>
       <div className="bg-amber-50 border border-amber-200 p-5 rounded-lg my-6 text-center">
         <p className="text-xl font-bold text-amber-900 m-0 italic">"Non-invasive does not mean non-risk."</p>

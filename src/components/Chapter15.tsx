@@ -1,4 +1,5 @@
-import Mermaid from "./Mermaid";
+import InteractiveFlowchart from "./InteractiveFlowchart";
+import { StartNode, DecisionNode, Arrow, Branch, OutcomeCard, TwoWaySplit, MultiSplit } from "./FlowchartElements";
 import { ArrowDown, CornerDownRight, Zap, Activity, ShieldAlert, AlertCircle, GitBranch, Lightbulb, Monitor, Thermometer } from 'lucide-react';
 
 export default function Chapter15() {
@@ -231,32 +232,51 @@ export default function Chapter15() {
       </div>
 
       <h3 className="text-xl font-semibold mt-8 mb-3 flex items-center gap-2"><GitBranch className="w-6 h-6 text-emerald-600"/> 15.15 Decision Tree</h3>
-      <div className="my-8 overflow-x-auto flex justify-center bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-  <Mermaid chart={`graph TD
-  N1["Medical Device"]
-  N2["↓"]
-  N1 --> N2
-  N3["Does it require an external source of energy to perform its intended medical function?"]
-  N2 --> N3
-  N3 -->|NO| N4["See Non-Active Rules"]
-  N5["↓"]
-  N3 -->|YES| N5
-  N6["Does it diagnose?"]
-  N5 --> N6
-  N7["Treat?"]
-  N6 --> N7
-  N8["Monitor?"]
-  N7 --> N8
-  N9["Deliver energy?"]
-  N8 --> N9
-  N10["Control another medical device?"]
-  N9 --> N10
-  N11["↓"]
-  N10 --> N11
-  N12["Apply the appropriate Active Device Rules Rules 9–12."]
-  N11 --> N12
-`} />
-</div>
+      <InteractiveFlowchart minHeight="450px">
+        <div className="flex flex-col items-center w-full">
+          <StartNode text="Device Assessment" />
+          <Arrow />
+          <DecisionNode text="Does it require an external source of energy to perform its intended medical function?" />
+          
+          <TwoWaySplit
+            leftLabel="NO"
+            rightLabel="YES"
+            leftChild={
+              <div className="bg-emerald-50 border-2 border-emerald-400 text-emerald-950 p-4 rounded-xl font-bold text-center max-w-[200px] text-xs shadow-sm">
+                Non-Active Devices (Rules i - viii) &rarr; See Non-Active Sections
+              </div>
+            }
+            rightChild={
+              <MultiSplit
+                branches={[
+                  {
+                    label: "Therapeutic / Energy Admin (Rule ix)",
+                    child: (
+                      <OutcomeCard
+                        clazz="C"
+                        subpart="Rule ix"
+                        title="Active Therapeutic"
+                        examples={["Infusion pumps", "Defibrillators: Class D"]}
+                      />
+                    )
+                  },
+                  {
+                    label: "Diagnostic / Monitoring (Rule x)",
+                    child: (
+                      <OutcomeCard
+                        clazz="B"
+                        subpart="Rule x - xii"
+                        title="Active Diagnostic / Administration"
+                        examples={["Ultrasound: Class C", "MRI: Class C", "Digital Thermometers"]}
+                      />
+                    )
+                  }
+                ]}
+              />
+            }
+          />
+        </div>
+      </InteractiveFlowchart>
       <h3 className="text-xl font-semibold mt-8 mb-3 flex items-center gap-2"><Lightbulb className="w-6 h-6 text-amber-500"/> 15.16 Memory Trick</h3>
       <div className="bg-amber-50 border border-amber-200 p-5 rounded-lg my-6 text-center">
         <p className="text-sm text-amber-800 m-0 mb-3">Imagine two flashlights. One is a simple torch. The other is a powerful laser. Both produce light.</p>

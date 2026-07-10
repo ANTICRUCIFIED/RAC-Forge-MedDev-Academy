@@ -22,6 +22,8 @@ import Chapter20 from './components/Chapter20';
 import Chapter21 from './components/Chapter21';
 import Chapter22 from './components/Chapter22';
 import Chapter23 from './components/Chapter23';
+import Chapter23_1 from './components/Chapter23_1';
+import Chapter23_2 from './components/Chapter23_2';
 import Chapter23b from './components/Chapter23b';
 import Chapter24 from './components/Chapter24';
 import Chapter25 from './components/Chapter25';
@@ -55,6 +57,8 @@ export const ChapterComponents: Record<number, React.FC> = {
   21: Chapter21,
   22: Chapter22,
   23: Chapter23,
+  23.1: Chapter23_1,
+  23.2: Chapter23_2,
   23.5: Chapter23b,
   24: Chapter24,
   25: Chapter25,

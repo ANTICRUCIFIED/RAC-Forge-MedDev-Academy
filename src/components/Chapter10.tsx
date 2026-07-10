@@ -1,4 +1,5 @@
-import Mermaid from "./Mermaid";
+import InteractiveFlowchart from "./InteractiveFlowchart";
+import { StartNode, DecisionNode, Arrow, Branch, OutcomeCard, TwoWaySplit, MultiSplit } from "./FlowchartElements";
 import { ArrowDown, CornerDownRight, UserPlus, Activity, DoorOpen, Scissors, Clock, AlertCircle, GitBranch, Lightbulb } from 'lucide-react';
 
 export default function Chapter10() {
@@ -216,39 +217,51 @@ export default function Chapter10() {
       <p className="font-semibold text-blue-800">Only after answering these questions does the regulator determine which of Rules 5–8 should be applied.</p>
 
       <h3 className="text-xl font-semibold mt-8 mb-3 flex items-center gap-2"><GitBranch className="w-6 h-6 text-emerald-600"/> 10.14 Decision Tree</h3>
-      <div className="my-8 overflow-x-auto flex justify-center bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-  <Mermaid chart={`graph TD
-  N1["Medical Device"]
-  N2["↓"]
-  N1 --> N2
-  N3["Does it enter the body?"]
-  N2 --> N3
-  N3 -->|NO| N4["See Rules 1-4"]
-  N5["↓"]
-  N3 -->|YES| N5
-  N6["How?"]
-  N5 --> N6
-  N6 -->|Through a natural body opening?| N7{"Rule 5: How long will it be used in the body orifice?"}
-  N7 -->|Transient - less than 60 minutes| N7A["Rule 5 (Class A)"]
-  N7 -->|Short-term - 60 mins to 30 days OR oral/nasal/ear cavity| N7B["Rule 5 (Class B)"]
-  N7 -->|Long-term - more than 30 days NOT in oral/nasal/ear cavity| N7C["Rule 5 (Class C)"]
-  N6 -->|Through surgery?| N8["Continue evaluating Rules 6–8"]
-  N9["↓"]
-  N6 --> N9
-  N10["How long does it remain?"]
-  N9 --> N10
-  N11["↓"]
-  N10 -->|Transient| N11
-  N10 -->|Short-term| N11
-  N10 -->|Long-term| N11
-  N12["Is it implantable?"]
-  N11 --> N12
-  N13["↓"]
-  N12 --> N13
-  N14["Apply the appropriate rule."]
-  N13 --> N14
-`} />
-</div>
+      <InteractiveFlowchart minHeight="450px">
+        <div className="flex flex-col items-center w-full">
+          <StartNode text="Invasive Evaluation" />
+          <Arrow />
+          <DecisionNode text="Does it enter the body?" />
+          
+          <TwoWaySplit
+            leftLabel="NO"
+            rightLabel="YES"
+            leftChild={
+              <div className="bg-emerald-50 border-2 border-emerald-400 text-emerald-950 p-4 rounded-xl font-bold text-center max-w-[200px] text-xs shadow-sm">
+                Non-Invasive Device (Rules i - iv) &rarr; Go to Rules 1-4
+              </div>
+            }
+            rightChild={
+              <MultiSplit
+                branches={[
+                  {
+                    label: "Orifice Opening",
+                    child: (
+                      <OutcomeCard
+                        clazz="B"
+                        subpart="Rule v"
+                        title="Orifice Placement"
+                        examples={["Transient: Class A", "Short-term: Class B", "Long-term: Class C"]}
+                      />
+                    )
+                  },
+                  {
+                    label: "Surgical / Tissue Contact",
+                    child: (
+                      <OutcomeCard
+                        clazz="C"
+                        subpart="Rule vi - viii"
+                        title="Surgically Invasive / Implants"
+                        examples={["CNS / Heart: Class D", "General implant: Class C", "Re-usable instrument: Class A"]}
+                      />
+                    )
+                  }
+                ]}
+              />
+            }
+          />
+        </div>
+      </InteractiveFlowchart>
       <h3 className="text-xl font-semibold mt-8 mb-3 flex items-center gap-2"><AlertCircle className="w-6 h-6 text-amber-500"/> 10.15 Common Beginner Mistakes</h3>
       <div className="space-y-4 my-6">
         <div className="border border-slate-200 rounded-lg p-4 bg-white shadow-sm">
