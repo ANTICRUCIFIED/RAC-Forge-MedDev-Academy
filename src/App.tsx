@@ -108,7 +108,7 @@ export default function App() {
             <Building className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight">RAC Forger Private Limited</h1>
+            <h1 className="text-xl font-bold tracking-tight">RAC Forge Private Limited</h1>
             <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Internal Training Platform</p>
           </div>
         </div>
