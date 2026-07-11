@@ -1,15 +1,14 @@
-export const maxDuration = 60;
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { GoogleGenAI } from "@google/genai";
 
 function getModels(): string[] {
+  // Use gemini-3.5-flash as the primary model as requested by the user
   return [
-    "gemini-3.1-flash-lite",
-    "gemini-2.5-flash",
     "gemini-3.5-flash",
-    "gemini-2.5-flash-lite",
-    "gemini-flash-latest",
     "gemini-3.1-pro-preview",
-    "gemini-2.5-pro"
+    "gemini-2.5-flash",
+    "gemini-2.5-pro",
+    "gemini-3.1-flash-lite"
   ];
 }
 
@@ -51,35 +50,24 @@ function isServiceUnavailable(error: any): boolean {
   );
 }
 
-export default async function handler(req: Request) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), { 
-      status: 405, 
-      headers: { 'Content-Type': 'application/json' } 
-    });
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   let term = "";
   try {
-    const body = await req.json();
-    term = body.term || "";
-    const { context } = body;
+    const { term: bodyTerm, context } = req.body || {};
+    term = bodyTerm || "";
     
     if (!term) {
-      return new Response(JSON.stringify({ error: 'Term is required' }), { 
-        status: 400, 
-        headers: { 'Content-Type': 'application/json' } 
-      });
+      return res.status(400).json({ error: 'Term is required' });
     }
 
-    
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENAI_API_KEY;
     if (!apiKey) {
-      return new Response(JSON.stringify({ 
+      return res.status(500).json({ 
         error: 'API key is not configured. Please add GEMINI_API_KEY or GOOGLE_API_KEY in your Vercel Environment Variables.' 
-      }), { 
-        status: 500, 
-        headers: { 'Content-Type': 'application/json' } 
       });
     }
     const ai = new GoogleGenAI({ apiKey });
@@ -95,17 +83,11 @@ ${context ? `Context: "${context}"` : ''}
 
 Respond ONLY in valid JSON. Do not include markdown code block formatting (like \`\`\`json) or any other text.`;
     
-    
-    
     const textModels = getModels();
-
-    
     let response;
     let lastError;
-    let breakOuter = false;
     
     for (const model of textModels) {
-      if (breakOuter) break;
       let retries = 1;
       let success = false;
       while (retries > 0 && !success) {
@@ -131,7 +113,7 @@ Respond ONLY in valid JSON. Do not include markdown code block formatting (like 
               continue;
             }
           } else {
-            retries = 0; // Other errors (e.g., NOT_FOUND or INVALID_ARGUMENT), don't retry
+            retries = 0; // Other errors
           }
           console.warn(`Model ${model} failed: ${error.message || String(error)}`);
           break;
@@ -154,15 +136,12 @@ Respond ONLY in valid JSON. Do not include markdown code block formatting (like 
     
     const data = JSON.parse(jsonText);
     
-    return new Response(JSON.stringify({
+    return res.status(200).json({
       id: term.toLowerCase().replace(/\s+/g, "_"),
       name: data.name || term,
       category: data.category || "General",
       definition: data.definition || "Definition not available.",
       examples: data.examples || []
-    }), { 
-      status: 200, 
-      headers: { 'Content-Type': 'application/json' } 
     });
   } catch (error: any) {
     console.error("Gemini API Error in define:", error);
@@ -212,16 +191,13 @@ Respond ONLY in valid JSON. Do not include markdown code block formatting (like 
       };
     }
 
-    return new Response(JSON.stringify({
+    return res.status(200).json({
       id: termStr.toLowerCase().replace(/\s+/g, "_"),
       name: matched.name,
       category: matched.category,
       definition: matched.definition,
       examples: matched.examples,
       offline_mode: true
-    }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
     });
   }
 }
