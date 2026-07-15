@@ -237,8 +237,10 @@ const wizardData: Record<string, Question> = {
     options: [
       { text: 'Subpart (c): Contacts heart/CNS, life supporting, active implant, wholly/mainly absorbed, administers medicine, or is a breast implant', result: { rule: 'Rule (xi) Subpart (c)', clazz: 'D', reasoning: 'it is a high-risk long term implant (CNS, circulatory, life support, active, absorbed, or breast implant) under Rule (xi) Subpart (c)' } },
       { text: 'Subpart (d): Undergoes chemical change in the body (except placed in teeth)', result: { rule: 'Rule (xi) Subpart (d)', clazz: 'D', reasoning: 'it undergoes chemical change in soft tissues under Rule (xi) Subpart (d)' } },
+      { text: 'Subpart (e): Total or partial joint replacement (e.g. total hip replacement, total knee replacement)', result: { rule: 'Rule (xi) Subpart (e)', clazz: 'D', reasoning: 'it is a total or partial joint replacement under Rule (xi) Subpart (e) / First Schedule of MDR 2017' } },
+      { text: 'Subpart (f): Spinal disc replacement or implantable device in contact with the spinal column', result: { rule: 'Rule (xi) Subpart (f)', clazz: 'D', reasoning: 'it is a spinal disc replacement or implantable device in contact with the spinal column under Rule (xi) Subpart (f)' } },
       { text: 'Subpart (b): Placed into any tooth (e.g. dental implants, permanent fillings)', result: { rule: 'Rule (xi) Subpart (b)', clazz: 'B', reasoning: 'it is a long-term implant placed into a tooth under Rule (xi) Subpart (b)' } },
-      { text: 'Subpart (a): General long-term implantable use (e.g. orthopedic bone plates, artificial knee/hip joints)', result: { rule: 'Rule (xi) Subpart (a)', clazz: 'C', reasoning: 'it is a general long-term implantable or surgically invasive device under Rule (xi) Subpart (a)' } }
+      { text: 'Subpart (a): General long-term implantable use (e.g. orthopedic bone plates, screws, nails, suture anchors)', result: { rule: 'Rule (xi) Subpart (a)', clazz: 'C', reasoning: 'it is a general long-term implantable or surgically invasive device under Rule (xi) Subpart (a)' } }
     ]
   }
 };

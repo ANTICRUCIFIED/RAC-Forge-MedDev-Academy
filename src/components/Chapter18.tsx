@@ -18,8 +18,8 @@ export default function Chapter18() {
         <p className="mb-2">After studying this chapter, you will be able to:</p>
         <ul className="mt-0 mb-0 space-y-1">
           <li>Define "implantable" and understand long-term risk characteristics.</li>
-          <li>Distinguish the 4 distinct subparts of Rule (xi): <strong>Subparts (a) to (d)</strong>.</li>
-          <li>Explain why dental implants are Class B while breast implants are Class D.</li>
+          <li>Distinguish the 6 distinct subparts of Rule (xi): <strong>Subparts (a) to (f)</strong> under Indian MDR 2017.</li>
+          <li>Explain why dental implants are Class B, general bone plates are Class C, while joint replacements are Class D.</li>
           <li>Identify the specific clinical parameters that escalate permanent implants to Class D.</li>
         </ul>
       </div>
@@ -43,18 +43,18 @@ export default function Chapter18() {
           </div>
           <p className="text-sm font-semibold text-red-900 mt-1 mb-2">Criteria:</p>
           <p className="text-sm text-slate-700 m-0 bg-white p-3 rounded border border-red-100">
-            Subject to subparts (b), (c), and (d), implantable or surgically invasive devices for long-term use.
+            Subject to subparts (b), (c), (d), (e), and (f), implantable or surgically invasive devices for long-term use.
           </p>
           <p className="text-sm font-semibold text-red-900 mt-3 mb-1">Key Concept:</p>
           <p className="text-sm text-slate-700 m-0">
-            Standard permanent supportive materials placed in musculoskeletal structures or non-critical soft tissues.
+            Standard permanent supportive materials placed in musculoskeletal structures or non-critical soft tissues, excluding moving joint surfaces or spinal disc replacements.
           </p>
           <p className="text-sm font-semibold text-red-900 mt-3 mb-1">Examples:</p>
           <ul className="text-sm text-slate-700 grid sm:grid-cols-2 gap-1 m-0">
             <li>Orthopedic bone plates, screws, and nails</li>
-            <li>Artificial knee joint replacements</li>
-            <li>Artificial hip joint replacements</li>
+            <li>Bone pins, wires, and surgical staples</li>
             <li>Non-active middle-ear implants</li>
+            <li>Ophthalmic suture anchors</li>
           </ul>
         </div>
 
@@ -123,6 +123,47 @@ export default function Chapter18() {
             <li>Chemically degradation-dependent long-term surgical plugs</li>
           </ul>
         </div>
+
+        {/* Subpart (e) */}
+        <div className="border border-purple-200 rounded-xl p-6 bg-purple-50/50">
+          <div className="flex justify-between items-start mb-2">
+            <h4 className="text-purple-950 font-bold text-lg m-0">Subpart (e) &rarr; Class D (High Risk)</h4>
+            <span className="bg-purple-600 text-white font-bold text-xs px-3 py-1 rounded-full">Class D</span>
+          </div>
+          <p className="text-sm font-semibold text-purple-900 mt-1 mb-2">Criteria (Indian MDR 2017 specific clause):</p>
+          <p className="text-sm text-slate-700 m-0 bg-white p-3 rounded border border-purple-100">
+            If intended to be a **total or partial joint replacement** (e.g., hip, knee, or shoulder joint prosthesis).
+          </p>
+          <p className="text-sm font-semibold text-purple-900 mt-3 mb-1">Key Concept:</p>
+          <p className="text-sm text-slate-700 m-0">
+            Joint replacements are high-risk Class D devices due to constant load bearing, articulation wear, debris generation, and severe consequences of failure.
+          </p>
+          <p className="text-sm font-semibold text-purple-900 mt-3 mb-1">Examples:</p>
+          <ul className="text-sm text-slate-700 grid sm:grid-cols-2 gap-1 m-0">
+            <li>Total Hip Replacement system</li>
+            <li>Total Knee Replacement system</li>
+            <li>Shoulder joint prosthesis</li>
+            <li>Elbow/ankle joint implants</li>
+          </ul>
+        </div>
+
+        {/* Subpart (f) */}
+        <div className="border border-purple-200 rounded-xl p-6 bg-purple-50/50">
+          <div className="flex justify-between items-start mb-2">
+            <h4 className="text-purple-950 font-bold text-lg m-0">Subpart (f) &rarr; Class D (High Risk)</h4>
+            <span className="bg-purple-600 text-white font-bold text-xs px-3 py-1 rounded-full">Class D</span>
+          </div>
+          <p className="text-sm font-semibold text-purple-900 mt-1 mb-2">Criteria (Indian MDR 2017 specific clause):</p>
+          <p className="text-sm text-slate-700 m-0 bg-white p-3 rounded border border-purple-100">
+            If intended to be a **spinal disc replacement** or an implantable device in contact with the **spinal column**.
+          </p>
+          <p className="text-sm font-semibold text-purple-900 mt-3 mb-1">Examples:</p>
+          <ul className="text-sm text-slate-700 grid sm:grid-cols-2 gap-1 m-0">
+            <li>Artificial spinal discs</li>
+            <li>Implantable spinal fusion cages</li>
+            <li>Spinal pedicle screw systems in direct spinal column contact</li>
+          </ul>
+        </div>
       </div>
 
       <h3 className="text-xl font-semibold mt-8 mb-3 flex items-center gap-2"><GitBranch className="w-6 h-6 text-emerald-600"/> 18.3 Rule (xi) Decision Flow</h3>
@@ -145,7 +186,7 @@ export default function Chapter18() {
             }
             rightChild={
               <div className="flex flex-col items-center min-w-max">
-                <DecisionNode text="CNS/Heart direct contact, life-supporting, active implant, breast implant, or absorbed?" />
+                <DecisionNode text="CNS/Heart contact, life-supporting, active, breast implant, or absorbed?" />
                 <TwoWaySplit
                   leftLabel="YES"
                   rightLabel="NO"
@@ -172,12 +213,29 @@ export default function Chapter18() {
                           />
                         }
                         rightChild={
-                          <OutcomeCard
-                            clazz="C"
-                            subpart="Subpart (a)"
-                            title="Class C - Standard Orthopedic/Soft-Tissue Implant"
-                            examples={["Orthopedic hip/knee implants"]}
-                          />
+                          <div className="flex flex-col items-center min-w-max">
+                            <DecisionNode text="Is it a joint replacement or spinal disc replacement/implant?" />
+                            <TwoWaySplit
+                              leftLabel="YES"
+                              rightLabel="NO"
+                              leftChild={
+                                <OutcomeCard
+                                  clazz="D"
+                                  subpart="Subparts (e) & (f)"
+                                  title="Class D - Joint or Spinal Implant"
+                                  examples={["Total Hip/Knee replacements", "Spinal fusion cages"]}
+                                />
+                              }
+                              rightChild={
+                                <OutcomeCard
+                                  clazz="C"
+                                  subpart="Subpart (a)"
+                                  title="Class C - Standard Orthopedic/Soft-Tissue Implant"
+                                  examples={["Bone plates, screws, nails"]}
+                                />
+                              }
+                            />
+                          </div>
                         }
                       />
                     </div>
@@ -191,14 +249,14 @@ export default function Chapter18() {
 
       <h3 className="text-xl font-semibold mt-8 mb-3 flex items-center gap-2"><Lightbulb className="w-6 h-6 text-amber-500"/> 18.4 Practice Quiz</h3>
       <div className="border border-slate-200 rounded-lg p-5 bg-slate-50">
-        <p className="font-semibold text-slate-800 m-0 mb-3">What classification class is assigned to a permanent silicone breast implant under Indian rules?</p>
+        <p className="font-semibold text-slate-800 m-0 mb-3">What classification class is assigned to a total hip or knee replacement prosthesis under Indian rules?</p>
         <div className="flex flex-col gap-2">
           <div className="p-3 bg-white border border-slate-200 rounded-lg flex justify-between items-center text-sm">
             <span>Class C - general orthopedic implant</span>
             <X className="w-5 h-5 text-red-500" />
           </div>
-          <div className="p-3 bg-white border border-emerald-500 bg-emerald-50 rounded-lg flex justify-between items-center text-sm font-medium text-emerald-950">
-            <span>Class D (Subpart c - specifically designated breast implants)</span>
+          <div className="p-3 bg-white border border-emerald-500 bg-emerald-50 rounded-lg flex justify-between items-center text-sm font-medium text-emerald-950 font-bold">
+            <span>Class D (Rule (xi) sub-clause (e) - specifically designated joint replacements)</span>
             <Check className="w-5 h-5 text-emerald-600" />
           </div>
         </div>
@@ -206,11 +264,13 @@ export default function Chapter18() {
 
       <div className="not-prose bg-slate-800 text-white rounded-xl p-6 my-8">
         <h3 className="text-xl font-bold text-blue-400 mt-0 mb-4">Chapter Summary</h3>
-        <ul className="text-slate-200 space-y-2 mb-6 m-0 pl-4 list-disc">
-          <li><strong>Subpart (a)</strong> = Class C: General orthopedic implants (plates, pins, joints).</li>
+        <ul className="text-slate-200 space-y-2 mb-6 m-0 pl-4 list-disc text-sm">
+          <li><strong>Subpart (a)</strong> = Class C: Standard non-joint orthopedic/soft-tissue supportive implants (plates, screws, pins, nails).</li>
           <li><strong>Subpart (b)</strong> = Class B: Long-term dental hardware anchored in teeth.</li>
-          <li><strong>Subpart (c)</strong> = Class D: Pacemakers, heart stents, life-supporting, active, or breast implants.</li>
+          <li><strong>Subpart (c)</strong> = Class D: Life-supporting, active, CNS/circulatory, or breast implants.</li>
           <li><strong>Subpart (d)</strong> = Class D: Long-term chemically degrading soft tissue plugs.</li>
+          <li><strong>Subpart (e)</strong> = Class D: Total or partial joint replacements (e.g., total hip and knee replacements).</li>
+          <li><strong>Subpart (f)</strong> = Class D: Spinal disc replacements or implantable devices in contact with the spinal column.</li>
         </ul>
       </div>
 
