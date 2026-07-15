@@ -69,7 +69,15 @@ const wizardData: Record<string, Question> = {
     options: [
       { text: 'Rule (xii): Active Therapeutic (exchanging or administering energy)', nextId: 'q_rule12' },
       { text: 'Rule (xiii): Active Diagnostic or Administrative', nextId: 'q_rule13' },
-      { text: 'Rule (xiv): General Active Device (e.g. motorized beds, surgical lights)', result: { rule: 'Rule (xiv)', clazz: 'A', reasoning: 'it is an active support device not covered under Rules (xii) or (xiii), thus falling into Rule (xiv)' } }
+      { text: 'Rule (xiv): Other Active Device (Catch-all / Active Implantable)', nextId: 'q_rule14' }
+    ]
+  },
+  q_rule14: {
+    id: 'q_rule14',
+    text: 'Under Rule (xiv) (Other Active Devices), what is the device subtype?',
+    options: [
+      { text: 'Subpart (b): Active implantable medical device or accessory thereof (e.g. cardiac pacemaker, implantable cardioverter-defibrillator, cochlear implant, implantable drug delivery pump)', result: { rule: 'Rule (xiv) Subpart (b)', clazz: 'D', reasoning: 'it is an active implantable medical device or its accessory under Rule (xiv) Subpart (b)' } },
+      { text: 'Subpart (a): All other active medical devices (e.g. motorized hospital beds, surgical lights, dental curing lights)', result: { rule: 'Rule (xiv) Subpart (a)', clazz: 'A', reasoning: 'it is a general other active device under Rule (xiv) Subpart (a)' } }
     ]
   },
   q_rule12: {
@@ -458,6 +466,10 @@ export default function Chapter23b() {
                 <div className="bg-emerald-50 border border-emerald-200 text-emerald-950 p-1.5 rounded text-[11px]">
                   <strong className="font-black bg-emerald-200/50 px-1 py-0.2 rounded text-[9px] mr-1">Class A</strong>
                   Standard support active hardware (motorized beds, lights)
+                </div>
+                <div className="bg-rose-50 border border-rose-200 text-rose-950 p-1.5 rounded text-[11px]">
+                  <strong className="font-black bg-rose-200/50 px-1 py-0.2 rounded text-[9px] mr-1">Class D</strong>
+                  Active implantables (cardiac pacemakers, cochlear implants)
                 </div>
               </div>
             </div>
