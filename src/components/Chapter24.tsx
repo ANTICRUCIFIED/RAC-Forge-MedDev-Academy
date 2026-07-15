@@ -5,8 +5,8 @@ import { Lightbulb } from 'lucide-react';
 export default function Chapter24() {
   return (
     <div className="prose prose-slate max-w-none">
-      <div className="bg-slate-800 text-white p-8 my-8 rounded-xl shadow-md text-center">
-        <h2 className="text-3xl font-bold m-0 text-blue-900">Chapter 24</h2>
+      <div className="bg-slate-800 text-white p-8 my-8 rounded-xl shadow-md text-center not-prose">
+        <h2 className="text-3xl font-bold m-0 text-blue-400">Chapter 24</h2>
         <p className="text-xl mt-2 text-slate-300">The Classification Workflow</p>
       </div>
 

@@ -272,7 +272,7 @@ export default function Chapter23b() {
 
   return (
     <div className="prose prose-slate max-w-none prose-headings:text-[#0f172a] prose-p:text-slate-600 prose-li:text-slate-700">
-      <div className="bg-[#0f172a] text-white p-8 my-8 rounded-xl shadow-md text-center">
+      <div className="bg-[#0f172a] text-white p-8 my-8 rounded-xl shadow-md text-center not-prose">
         <h2 className="text-3xl font-bold m-0 text-blue-400">Chapter 23.5</h2>
         <p className="text-xl mt-2 text-slate-300 font-medium">Master Flowchart & Classification Wizard</p>
       </div>

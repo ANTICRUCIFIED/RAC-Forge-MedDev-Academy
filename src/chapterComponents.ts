@@ -32,6 +32,21 @@ import Chapter27 from './components/Chapter27';
 import Chapter28 from './components/Chapter28';
 import Chapter29 from './components/Chapter29';
 import Chapter30 from './components/Chapter30';
+import Chapter31 from './components/Chapter31';
+import Chapter32 from './components/Chapter32';
+import Chapter33 from './components/Chapter33';
+import Chapter34 from './components/Chapter34';
+import Chapter35 from './components/Chapter35';
+import Chapter36 from './components/Chapter36';
+import Chapter37 from './components/Chapter37';
+import Chapter38 from './components/Chapter38';
+import Chapter39 from './components/Chapter39';
+import Chapter40 from './components/Chapter40';
+import Chapter41 from './components/Chapter41';
+import Chapter42 from './components/Chapter42';
+import Chapter43 from './components/Chapter43';
+import Chapter44 from './components/Chapter44';
+import Chapter45 from './components/Chapter45';
 
 export const ChapterComponents: Record<number, React.FC> = {
   1: Chapter1,
@@ -67,4 +82,19 @@ export const ChapterComponents: Record<number, React.FC> = {
   28: Chapter28,
   29: Chapter29,
   30: Chapter30,
+  31: Chapter31,
+  32: Chapter32,
+  33: Chapter33,
+  34: Chapter34,
+  35: Chapter35,
+  36: Chapter36,
+  37: Chapter37,
+  38: Chapter38,
+  39: Chapter39,
+  40: Chapter40,
+  41: Chapter41,
+  42: Chapter42,
+  43: Chapter43,
+  44: Chapter44,
+  45: Chapter45,
 };

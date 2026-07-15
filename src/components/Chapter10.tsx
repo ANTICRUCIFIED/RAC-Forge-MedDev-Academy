@@ -11,7 +11,7 @@ export default function Chapter10() {
         <h1 className="text-3xl font-extrabold text-slate-900 mt-0">Invasive Medical Devices</h1>
       </div>
 
-      <div className="bg-blue-50 border-l-4 border-blue-600 p-5 my-6 rounded-r-lg shadow-sm">
+      <div className="bg-blue-50 border-l-4 border-blue-600 p-5 my-6 rounded-r-lg shadow-sm not-prose">
         <h2 className="text-xl font-bold text-blue-900 mt-0 mb-2">Chapter 10: Understanding Invasive Medical Devices</h2>
         <p className="m-0 font-medium text-blue-800 italic">
           The Foundation for Rules 5–8

@@ -6,7 +6,7 @@ export default function Chapter18() {
   return (
     <div className="prose prose-slate max-w-none prose-headings:text-[#0f172a] prose-p:text-slate-600 prose-li:text-slate-700">
       
-      <div className="bg-blue-50 border-l-4 border-blue-600 p-5 my-6 rounded-r-lg shadow-sm">
+      <div className="bg-blue-50 border-l-4 border-blue-600 p-5 my-6 rounded-r-lg shadow-sm not-prose">
         <h2 className="text-xl font-bold text-blue-900 mt-0 mb-2">Rule (xi): Implantable and Long-Term Surgically Invasive Medical Devices</h2>
         <p className="m-0 font-medium text-blue-800 italic">
           "Continuous use for more than 30 days or permanent surgical implants under Indian MDR 2017"

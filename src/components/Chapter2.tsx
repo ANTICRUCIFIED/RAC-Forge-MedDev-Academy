@@ -3,7 +3,7 @@ import { Scale, HeartPulse, AlertTriangle, Battery, ShieldAlert, Cpu } from 'luc
 export default function Chapter2() {
   return (
     <div className="prose prose-slate max-w-none prose-headings:text-[#0f172a] prose-p:text-slate-600 prose-li:text-slate-700">
-      <div className="bg-blue-50 border-l-4 border-blue-600 p-5 my-6 rounded-r-lg shadow-sm">
+      <div className="bg-blue-50 border-l-4 border-blue-600 p-5 my-6 rounded-r-lg shadow-sm not-prose">
         <p className="m-0 font-medium text-blue-900 text-lg italic">
           "Not every medical device is equally dangerous. Therefore, not every medical device should be regulated in the same way."
         </p>

@@ -48,6 +48,21 @@ const CHAPTERS = [
   { id: 28, title: 'Chapter 28: Practical Classification of Common Medical Devices' },
   { id: 29, title: 'Chapter 29: The 100 Most Common Medical Device Classification Mistakes' },
   { id: 30, title: 'Chapter 30: Practical Classification in Different Medical Specialties' },
+  { id: 31, title: 'Chapter 31: Analysis of Major Medical Device Standards' },
+  { id: 32, title: 'Chapter 32: Preparing the Essential Requirements Checklist (ERC)' },
+  { id: 33, title: 'Chapter 33: Essential Principle Clause 1: General Requirements - Design, Manufacture, and Safety Principles' },
+  { id: 34, title: 'Chapter 34: Essential Principle Clause 2: Safety Principles & Risk Reduction Hierarchy' },
+  { id: 35, title: 'Chapter 35: Essential Principle Clause 3: Performance, Efficacy, and Technical Verification' },
+  { id: 36, title: 'Chapter 36: Essential Principle Clause 4: Product Lifetime, Durability, and Integrity Over Time' },
+  { id: 37, title: 'Chapter 37: Essential Principle Clause 5: Transport, Storage, and Packaging Systems Verification' },
+  { id: 38, title: 'Chapter 38: Essential Principle Clause 6 & 6a: Acceptable Residual Side Effects & Clinical Evaluation Demonstration' },
+  { id: 39, title: 'Chapter 39: Essential Principle Clause 7: Chemical, Physical, and Biological Properties (Biocompatibility, Formulation, Leaching, and Drug Integration)' },
+  { id: 40, title: 'Chapter 40: Essential Principle Clause 8: Infection Control, Sterilization, and Microbial Contamination Validation' },
+  { id: 41, title: 'Chapter 41: Essential Principle Clause 9: Environmental and Mechanical Properties (Co-use, Injuries, Fire, Reciprocal Interference)' },
+  { id: 42, title: 'Chapter 42: Essential Principle Clause 10: Devices with a Measuring Function (Metrological Accuracy, Calibration, and Legal Units)' },
+  { id: 43, title: 'Chapter 43: Essential Principle Clause 11: Protection Against Ionizing & Non-Ionizing Radiation' },
+  { id: 44, title: 'Chapter 44: Essential Principle Clause 12: Electrical Safety, Active Energy Sources, and Embedded Software Systems' },
+  { id: 45, title: 'Chapter 45: Essential Principle Clause 13: Manufacturer Information (IFU, Labeling, and ISO Symbols Standard)' },
 ];
 
 export default function App() {
@@ -82,11 +97,20 @@ export default function App() {
     if (!completedChapters.includes(activeChapter)) {
       setCompletedChapters([...completedChapters, activeChapter]);
     }
-    if (activeChapter < CHAPTERS.length) {
-      setActiveChapter(activeChapter + 1);
+    const currentIndex = CHAPTERS.findIndex(c => c.id === activeChapter);
+    if (currentIndex < CHAPTERS.length - 1) {
+      setActiveChapter(CHAPTERS[currentIndex + 1].id);
     }
   };
 
+  const handlePreviousChapter = () => {
+    const currentIndex = CHAPTERS.findIndex(c => c.id === activeChapter);
+    if (currentIndex > 0) {
+      setActiveChapter(CHAPTERS[currentIndex - 1].id);
+    }
+  };
+
+  const isLastChapter = activeChapter === CHAPTERS[CHAPTERS.length - 1].id;
   const progressPercentage = Math.round((completedChapters.length / CHAPTERS.length) * 100);
 
   return (
@@ -250,14 +274,18 @@ export default function App() {
 
             {/* Action Buttons */}
             <div className="flex justify-between items-center pt-4">
-              <button className="text-slate-500 font-medium hover:text-[#0f172a] transition-colors">
+              <button 
+                onClick={handlePreviousChapter}
+                className="text-slate-500 font-medium hover:text-[#0f172a] transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                disabled={activeChapter === CHAPTERS[0].id}
+              >
                 Previous Chapter
               </button>
               <button 
                 onClick={handleMarkComplete}
                 className="bg-[#0f172a] hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-xl shadow-md transition-all flex items-center gap-2"
               >
-                {activeChapter === CHAPTERS.length ? 'Finish Course' : 'Mark Chapter as Complete & Next'}
+                {isLastChapter ? 'Finish Course' : 'Mark Chapter as Complete & Next'}
                 <ChevronRight className="w-5 h-5" />
               </button>
             </div>

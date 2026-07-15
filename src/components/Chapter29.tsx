@@ -31,7 +31,7 @@ export default function Chapter29() {
         </p>
       </div>
 
-      <div className="bg-rose-50 border-l-4 border-rose-600 p-5 my-6 rounded-r-lg shadow-sm">
+      <div className="bg-rose-50 border-l-4 border-rose-600 p-5 my-6 rounded-r-lg shadow-sm not-prose">
         <h2 className="text-xl font-bold text-rose-900 mt-0 mb-2">CHAPTER 29</h2>
         <h2 className="text-xl font-bold text-rose-900 mt-0 mb-2">The 100 Most Common Medical Device Classification Mistakes</h2>
         <p className="m-0 font-medium text-rose-900 italic">
